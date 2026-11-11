@@ -1,12 +1,11 @@
 {
   "nav": {
     "language": "Language",
-    "theme": "Toggle theme",
     "join": "Join the waitlist"
   },
   "hero": {
-    "badge": "Coming soon",
-    "title": "Stop guessing what to build.",
+    "badge": "Opening soon · Join the waitlist",
+    "title": "Stop guessing <hl>what to build.</hl>",
     "subtitle": "People post the problems they want an app for. Everyone upvotes the ones they share. Builders ship solutions and compete on the same problem.",
     "ctaProblem": "I have a problem to solve",
     "ctaBuilder": "I'm a builder"
@@ -18,11 +17,12 @@
     "step2Title": "Upvote what you share",
     "step2Body": "The issues most people care about rise to the top.",
     "step3Title": "Builders compete",
-    "step3Body": "Developers ship solutions. Users vote for the best one."
+    "step3Body": "Developers ship solutions. Users vote for the best one.",
+    "kicker": "Three steps. Zero guessing."
   },
   "examples": {
     "title": "Example issues",
-    "subtitle": "The kind of problems we want to see on BuildThis.",
+    "subtitle": "The kind of problems we want to see. Go ahead, upvote one.",
     "votes": "{{count}} votes",
     "builders": "{{count}} builders",
     "items": {
@@ -46,7 +46,8 @@
         "title": "Get notified when a rental in my area matches my budget",
         "category": "Housing"
       }
-    }
+    },
+    "tryVote": "Tap to upvote"
   },
   "signup": {
     "title": "Get early access",
@@ -68,5 +69,15 @@
   },
   "footer": {
     "privacy": "We only use your email to tell you when BuildThis opens."
+  },
+  "marquee": {
+    "1": "An app to split bills with roommates",
+    "2": "Which pharmacy is open tonight?",
+    "3": "School announcements in one place",
+    "4": "Track warranties with a photo",
+    "5": "Alerts for rentals in my budget",
+    "6": "Book a padel court in 2 taps",
+    "7": "Remind me to water my plants",
+    "8": "Compare supermarket prices near me"
   }
 }
