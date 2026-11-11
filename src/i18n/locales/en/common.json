@@ -1,0 +1,72 @@
+{
+  "nav": {
+    "language": "Language",
+    "theme": "Toggle theme",
+    "join": "Join the waitlist"
+  },
+  "hero": {
+    "badge": "Coming soon",
+    "title": "Stop guessing what to build.",
+    "subtitle": "People post the problems they want an app for. Everyone upvotes the ones they share. Builders ship solutions and compete on the same problem.",
+    "ctaProblem": "I have a problem to solve",
+    "ctaBuilder": "I'm a builder"
+  },
+  "how": {
+    "title": "How it works",
+    "step1Title": "Post a problem",
+    "step1Body": "\"I want an app that…\" Describe what's missing in your day.",
+    "step2Title": "Upvote what you share",
+    "step2Body": "The issues most people care about rise to the top.",
+    "step3Title": "Builders compete",
+    "step3Body": "Developers ship solutions. Users vote for the best one."
+  },
+  "examples": {
+    "title": "Example issues",
+    "subtitle": "The kind of problems we want to see on BuildThis.",
+    "votes": "{{count}} votes",
+    "builders": "{{count}} builders",
+    "items": {
+      "1": {
+        "title": "Split shared groceries with roommates automatically",
+        "category": "Finance"
+      },
+      "2": {
+        "title": "Find which pharmacy is on duty near me tonight",
+        "category": "Health"
+      },
+      "3": {
+        "title": "One place for all my kids' school announcements",
+        "category": "Family"
+      },
+      "4": {
+        "title": "Track warranties and receipts with a photo",
+        "category": "Productivity"
+      },
+      "5": {
+        "title": "Get notified when a rental in my area matches my budget",
+        "category": "Housing"
+      }
+    }
+  },
+  "signup": {
+    "title": "Get early access",
+    "subtitle": "Tell us who you are. We'll email you when BuildThis opens.",
+    "typeProblem": "I have a problem",
+    "typeBuilder": "I'm a builder",
+    "email": "Email",
+    "emailPlaceholder": "you@example.com",
+    "textProblem": "What app do you wish existed?",
+    "textProblemPlaceholder": "I want an app that…",
+    "textBuilder": "What do you build with?",
+    "textBuilderPlaceholder": "e.g. React, Flutter, Swift, no-code…",
+    "submit": "Join",
+    "submitting": "Sending…",
+    "success": "You're on the list. Thanks!",
+    "another": "Send another",
+    "error": "Something went wrong. Please try again.",
+    "invalidEmail": "Please enter a valid email."
+  },
+  "footer": {
+    "privacy": "We only use your email to tell you when BuildThis opens."
+  }
+}
