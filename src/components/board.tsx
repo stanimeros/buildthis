@@ -7,10 +7,11 @@ import { ExampleIssues } from '@/components/example-issues'
 import { IssueCard } from '@/components/issue-card'
 import { CountrySelect } from '@/components/place'
 import { Spinner } from '@/components/spinner'
+import { AuthLink } from '@/components/auth-dialog'
 import { Button } from '@/components/ui/button'
 import { type Sort, useIssueFeed } from '@/lib/hooks'
 import { isCountry } from '@/lib/countries'
-import { Link, useSearchParams } from '@/lib/nav'
+import { useSearchParams } from '@/lib/nav'
 import { type Category, categories } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -110,10 +111,10 @@ export function Board() {
           <div className="flex flex-col items-center gap-4 rounded-3xl border border-dashed py-16 text-center">
             <p className="text-muted-foreground">{t('issues.empty')}</p>
             <Button variant="flame" asChild>
-              <Link to="/new">
+              <AuthLink to="/new">
                 <PlusIcon weight="bold" />
                 {t('issues.emptyCta')}
-              </Link>
+              </AuthLink>
             </Button>
           </div>
         ) : (

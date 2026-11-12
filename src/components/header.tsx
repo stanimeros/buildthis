@@ -5,9 +5,11 @@ import { Link } from '@/lib/nav'
 
 import { Avatar } from '@/components/avatar'
 import { Logo } from '@/components/logo'
+import { AuthLink } from '@/components/auth-dialog'
 import { Button } from '@/components/ui/button'
 import { languages, setLanguage } from '@/i18n'
 import { useAuth } from '@/lib/auth'
+import { openAuthDialog } from '@/lib/auth-dialog'
 import { cn } from '@/lib/utils'
 
 const labels = { en: 'EN', el: 'ΕΛ' } as const
@@ -51,15 +53,15 @@ export function Header() {
             ))}
           </div>
           <Button variant="flame" size="icon" className="sm:hidden" aria-label={t('nav.post')} asChild>
-            <Link to="/new">
+            <AuthLink to="/new">
               <PlusIcon weight="bold" />
-            </Link>
+            </AuthLink>
           </Button>
           <Button variant="flame" className="hidden sm:inline-flex" asChild>
-            <Link to="/new">
+            <AuthLink to="/new">
               <PlusIcon weight="bold" />
               {t('nav.post')}
-            </Link>
+            </AuthLink>
           </Button>
           {loading ? (
             <span className="size-10 animate-pulse rounded-full bg-muted" />
@@ -76,9 +78,7 @@ export function Header() {
               />
             </Link>
           ) : (
-            <Button asChild>
-              <Link to="/signin">{t('nav.signIn')}</Link>
-            </Button>
+            <Button onClick={openAuthDialog}>{t('nav.signIn')}</Button>
           )}
         </div>
       </div>

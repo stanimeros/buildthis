@@ -1,5 +1,5 @@
 import {
-  ArrowLeftIcon, ArrowSquareOutIcon, CheckIcon, EyeSlashIcon, HammerIcon, PencilSimpleIcon,
+  ArrowLeftIcon, ArrowSquareOutIcon, CheckIcon, EyeSlashIcon, HammerIcon, SpinnerGapIcon, PencilSimpleIcon,
   PlusIcon, ShareNetworkIcon, TrashIcon,
 } from '@phosphor-icons/react'
 import { AnimatePresence, motion } from 'motion/react'
@@ -31,13 +31,12 @@ function BuildButton({ issue }: { issue: Issue }) {
   const claim = useClaim(issue.id)
   const building = !!claim
   const requireSignIn = useRequireSignIn()
-  const navigate = useNavigate()
   const [pending, setPending] = useState(false)
 
   async function click() {
     if (!user) return requireSignIn()
     if (blocked) return toast.error(t('blocked.title'))
-    if (!profile) return navigate(`/onboarding?next=${encodeURIComponent(`/p/${issue.id}`)}`)
+    if (!profile) return requireSignIn()
     setPending(true)
     try {
       await toggleBuilder(profile, issue.id, building)
@@ -55,12 +54,12 @@ function BuildButton({ issue }: { issue: Issue }) {
         size="lg"
         variant={building ? 'lime' : 'default'}
         onClick={click}
-        disabled={pending}
+        loading={pending}
         aria-pressed={building}
         className="w-full sm:w-auto"
       >
         <AnimatePresence mode="wait" initial={false}>
-          <motion.span
+          {!pending && <motion.span
             key={building ? 'on' : 'off'}
             initial={{ rotate: -90, scale: 0 }}
             animate={{ rotate: 0, scale: 1 }}
@@ -68,7 +67,7 @@ function BuildButton({ issue }: { issue: Issue }) {
             className="flex"
           >
             {building ? <CheckIcon weight="bold" /> : <HammerIcon weight="duotone" />}
-          </motion.span>
+          </motion.span>}
         </AnimatePresence>
         {t(building ? 'issue.buildingActive' : 'issue.building')}
         <span className="rounded-full bg-background/20 px-2 py-0.5 text-sm tabular-nums">{issue.builders}</span>
@@ -82,15 +81,18 @@ function SolutionItem({ solution, index }: { solution: Solution; index: number }
   const { user, isAdmin, solutionVotes } = useAuth()
   const mine = user?.uid === solution.authorId
   const [dialog, confirm] = useConfirm()
+  const [removing, setRemoving] = useState(false)
 
   async function remove() {
     const ok = await confirm({ title: t('issue.deleteSolutionConfirm'), confirmLabel: t('issue.delete'), destructive: true })
     if (!ok) return
+    setRemoving(true)
     try {
       await removeSolution(solution.id, solution.issueId)
     } catch (err) {
       console.error(err)
       toast.error(t('common.error'))
+      setRemoving(false)
     }
   }
 
@@ -141,8 +143,8 @@ function SolutionItem({ solution, index }: { solution: Solution; index: number }
             </Link>
           )}
           {(mine || isAdmin) && (
-            <button onClick={remove} className="inline-flex items-center gap-1 hover:text-destructive">
-              <TrashIcon /> {t('issue.delete')}
+            <button onClick={remove} disabled={removing} className="inline-flex items-center gap-1 hover:text-destructive">
+              {removing ? <SpinnerGapIcon className="animate-spin" /> : <TrashIcon />} {t('issue.delete')}
             </button>
           )}
           {!mine && <ReportButton coll="solutions" id={solution.id} authorId={solution.authorId} compact />}
@@ -160,6 +162,7 @@ export function IssuePage() {
   const { issue, loading } = useIssue(id)
   const solutions = useSolutions(id)
   const [dialog, confirm] = useConfirm()
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (issue) document.title = `${issue.title} · BuildThis`
@@ -196,8 +199,15 @@ export function IssuePage() {
   async function adminDelete() {
     const ok = await confirm({ title: t('issue.adminDeleteConfirm'), confirmLabel: t('issue.delete'), destructive: true })
     if (!ok) return
-    await adminDeleteIssue(issue!.id)
-    navigate('/')
+    setDeleting(true)
+    try {
+      await adminDeleteIssue(issue!.id)
+      navigate('/')
+    } catch (err) {
+      console.error(err)
+      toast.error(t('common.error'))
+      setDeleting(false)
+    }
   }
 
   return (
@@ -269,7 +279,7 @@ export function IssuePage() {
           )}
           {!mine && <ReportButton coll="issues" id={issue.id} authorId={issue.authorId} />}
           {isAdmin && (
-            <Button size="lg" variant="destructive" onClick={adminDelete}>
+            <Button size="lg" variant="destructive" onClick={adminDelete} loading={deleting}>
               <TrashIcon weight="bold" />
               {t('issue.adminDelete')}
             </Button>

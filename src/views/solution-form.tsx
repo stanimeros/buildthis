@@ -180,7 +180,7 @@ function SolutionForm({
             />
           </Field>
           <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}>
-            <Button type="submit" size="lg" variant="flame" className="group w-full" disabled={sending}>
+            <Button type="submit" size="lg" variant="flame" className="group w-full" loading={sending}>
               {t(sending ? 'solution.submitting' : existing ? 'solution.save' : 'solution.submit')}
               <RocketLaunchIcon
                 weight="fill"

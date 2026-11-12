@@ -161,7 +161,8 @@
     "subtitle": "Post problems, upvote, and ship solutions.",
     "google": "Continue with Google",
     "error": "Sign-in failed. Please try again.",
-    "terms": "By continuing you agree to let us store your name and email to run your account."
+    "terms": "By continuing you agree to let us store your name and email to run your account.",
+    "prompt": "Sign in to continue"
   },
   "onboarding": {
     "step": "Step {{n}} of 2",
@@ -183,7 +184,8 @@
     "finish": "Let's go",
     "saving": "Saving…",
     "error": "Couldn't save. Please try again.",
-    "nameReserved": "That name is reserved. Pick another one."
+    "nameReserved": "That name is reserved. Pick another one.",
+    "welcome": "Welcome, {{name}}!"
   },
   "me": {
     "title": "My account",

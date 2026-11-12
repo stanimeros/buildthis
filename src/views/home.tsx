@@ -6,6 +6,7 @@ import { Link } from '@/lib/nav'
 import { Board } from '@/components/board'
 import { Hero } from '@/components/hero'
 import { HowItWorks } from '@/components/how-it-works'
+import { AuthLink } from '@/components/auth-dialog'
 import { Button } from '@/components/ui/button'
 
 function Bands() {
@@ -39,10 +40,10 @@ function Bands() {
       >
         <h3 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{t('home.postTitle')}</h3>
         <Button size="lg" className="self-start" asChild>
-          <Link to="/new">
+          <AuthLink to="/new">
             <PlusIcon weight="bold" />
             {t('home.postCta')}
-          </Link>
+          </AuthLink>
         </Button>
       </motion.div>
     </section>

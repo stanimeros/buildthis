@@ -2,11 +2,11 @@ import { HammerIcon, LightbulbIcon, SparkleIcon } from '@phosphor-icons/react'
 import { AnimatePresence, motion } from 'motion/react'
 import { type FormEvent, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Navigate, useNavigate, useSearchParams } from '@/lib/nav'
+import { Navigate, useSearchParams } from '@/lib/nav'
 import { toast } from 'sonner'
 
-import { Chips, Field, FormCard } from '@/components/field'
-import { Page } from '@/components/layout'
+import { SignInPrompt } from '@/components/auth-dialog'
+import { Chips, Field } from '@/components/field'
 import { Spinner } from '@/components/spinner'
 import { Button } from '@/components/ui/button'
 import { CountrySelect } from '@/components/place'
@@ -59,12 +59,10 @@ export function RolePicker({ value, onChange }: { value: Role | null; onChange: 
   )
 }
 
-export function OnboardingPage() {
+/** The two onboarding steps. Saving creates the profile; the auth store then has a profile. */
+export function OnboardingForm() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
-  const [params] = useSearchParams()
-  const next = safeNext(params.get('next'))
-  const { user, profile, loading } = useAuth()
+  const { user } = useAuth()
   const [step, setStep] = useState<1 | 2>(1)
   const [role, setRole] = useState<Role | null>(null)
   const [name, setName] = useState(() => user?.displayName ?? user?.email?.split('@')[0] ?? '')
@@ -72,10 +70,6 @@ export function OnboardingPage() {
   const [stack, setStack] = useState<string[]>([])
   const [link, setLink] = useState('')
   const [saving, setSaving] = useState(false)
-
-  if (loading) return <Spinner />
-  if (!user) return <Navigate to={`/signin?next=${encodeURIComponent(next)}`} replace />
-  if (profile && !saving) return <Navigate to={next} replace />
 
   const builder = role === 'builder' || role === 'both'
   const nameOk = name.trim().length >= 1 && name.trim().length <= 60 && !isReservedName(name)
@@ -97,7 +91,7 @@ export function OnboardingPage() {
         },
         getSource(),
       )
-      navigate(next, { replace: true })
+      toast.success(t('onboarding.welcome', { name: name.trim() }))
     } catch (err) {
       console.error(err)
       toast.error(t('onboarding.error'))
@@ -106,8 +100,8 @@ export function OnboardingPage() {
   }
 
   return (
-    <Page narrow>
-      <div className="flex items-center gap-3">
+    <div>
+      <div className="flex items-center gap-3 pr-8">
         <span className="text-sm font-bold text-primary">{t('onboarding.step', { n: step })}</span>
         <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
           <motion.div
@@ -125,64 +119,70 @@ export function OnboardingPage() {
           exit={{ opacity: 0, x: -30 }}
           transition={{ duration: 0.2 }}
         >
-          <h1 className="mt-8 text-4xl font-extrabold tracking-tight sm:text-5xl">
+          <h2 className="mt-6 mb-6 text-2xl font-extrabold tracking-tight sm:text-3xl">
             {t(step === 1 ? 'onboarding.q1' : 'onboarding.q2')}
-          </h1>
-          <FormCard>
-            {step === 1 ? (
-              <div className="space-y-6">
-                <RolePicker value={role} onChange={setRole} />
-                <Button size="lg" className="w-full" disabled={!role} onClick={() => setStep(2)}>
-                  {t('onboarding.next')}
+          </h2>
+          {step === 1 ? (
+            <div className="space-y-6">
+              <RolePicker value={role} onChange={setRole} />
+              <Button size="lg" className="w-full" disabled={!role} onClick={() => setStep(2)}>
+                {t('onboarding.next')}
+              </Button>
+            </div>
+          ) : (
+            <form onSubmit={finish} noValidate className="space-y-6">
+              <Field id="name" label={t('onboarding.name')} error={isReservedName(name) ? t('onboarding.nameReserved') : null}>
+                <Input id="name" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} />
+              </Field>
+              <Field id="country" label={t('onboarding.country')}>
+                <CountrySelect id="country" value={country} onChange={setCountry} placeholder={t('place.chooseCountry')} />
+              </Field>
+              {builder && (
+                <>
+                  <Field label={t('onboarding.stack')}>
+                    <Chips
+                      options={stacks}
+                      value={stack}
+                      label={(s) => s}
+                      onChange={(s) => setStack((cur) => (cur.includes(s) ? cur.filter((x) => x !== s) : [...cur, s]))}
+                    />
+                  </Field>
+                  <Field id="link" label={t('onboarding.link')} error={linkOk ? null : t('solution.invalidUrl')}>
+                    <Input
+                      id="link"
+                      type="url"
+                      inputMode="url"
+                      value={link}
+                      maxLength={200}
+                      placeholder={t('onboarding.linkPlaceholder')}
+                      onChange={(e) => setLink(e.target.value)}
+                      aria-invalid={!linkOk}
+                    />
+                  </Field>
+                </>
+              )}
+              <div className="flex gap-3">
+                <Button type="button" size="lg" variant="outline" onClick={() => setStep(1)}>
+                  {t('onboarding.back')}
+                </Button>
+                <Button type="submit" size="lg" variant="flame" className="flex-1" loading={saving} disabled={!nameOk || !linkOk}>
+                  {t(saving ? 'onboarding.saving' : 'onboarding.finish')}
                 </Button>
               </div>
-            ) : (
-              <form onSubmit={finish} noValidate className="space-y-6">
-                <Field id="name" label={t('onboarding.name')} error={isReservedName(name) ? t('onboarding.nameReserved') : null}>
-                  <Input id="name" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} />
-                </Field>
-                <Field id="country" label={t('onboarding.country')}>
-                  <CountrySelect id="country" value={country} onChange={setCountry} placeholder={t('place.chooseCountry')} />
-                </Field>
-                {builder && (
-                  <>
-                    <Field label={t('onboarding.stack')}>
-                      <Chips
-                        options={stacks}
-                        value={stack}
-                        label={(s) => s}
-                        onChange={(s) =>
-                          setStack((cur) => (cur.includes(s) ? cur.filter((x) => x !== s) : [...cur, s]))
-                        }
-                      />
-                    </Field>
-                    <Field id="link" label={t('onboarding.link')} error={linkOk ? null : t('solution.invalidUrl')}>
-                      <Input
-                        id="link"
-                        type="url"
-                        inputMode="url"
-                        value={link}
-                        maxLength={200}
-                        placeholder={t('onboarding.linkPlaceholder')}
-                        onChange={(e) => setLink(e.target.value)}
-                        aria-invalid={!linkOk}
-                      />
-                    </Field>
-                  </>
-                )}
-                <div className="flex gap-3">
-                  <Button type="button" size="lg" variant="outline" onClick={() => setStep(1)}>
-                    {t('onboarding.back')}
-                  </Button>
-                  <Button type="submit" size="lg" variant="flame" className="flex-1" disabled={saving || !nameOk || !linkOk}>
-                    {t(saving ? 'onboarding.saving' : 'onboarding.finish')}
-                  </Button>
-                </div>
-              </form>
-            )}
-          </FormCard>
+            </form>
+          )}
         </motion.div>
       </AnimatePresence>
-    </Page>
+    </div>
   )
+}
+
+/** /onboarding (and /signin): open the sign-in dialog, then go on to `next`. */
+export function OnboardingPage() {
+  const [params] = useSearchParams()
+  const next = safeNext(params.get('next'))
+  const { user, profile, loading } = useAuth()
+  if (loading) return <Spinner />
+  if (user && profile) return <Navigate to={next} replace />
+  return <SignInPrompt />
 }

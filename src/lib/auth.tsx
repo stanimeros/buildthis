@@ -38,6 +38,12 @@ function set(patch: Partial<AuthState>) {
   listeners.forEach((l) => l())
 }
 
+let lastSignOut = 0
+/** True right after a sign-out or account deletion (so pages don't pop the sign-in dialog). */
+export function justSignedOut() {
+  return Date.now() - lastSignOut < 5000
+}
+
 let started = false
 function start() {
   if (started || typeof window === 'undefined') return
@@ -48,6 +54,7 @@ function start() {
     unsubs.forEach((u) => u())
     unsubs = []
     if (!user) {
+      if (state.user) lastSignOut = Date.now()
       set({ ...initial, loading: false, profile: null })
       return
     }

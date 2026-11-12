@@ -3,8 +3,8 @@ import { motion, type Variants } from 'motion/react'
 import type { ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 
+import { AuthLink } from '@/components/auth-dialog'
 import { Button } from '@/components/ui/button'
-import { Link } from '@/lib/nav'
 
 const rise: Variants = {
   hidden: { opacity: 0, y: 24, filter: 'blur(8px)' },
@@ -53,10 +53,10 @@ export function Hero() {
         <motion.div variants={rise} className="mt-7 flex justify-center">
           <motion.div whileHover={{ y: -3 }} whileTap={{ scale: 0.96 }}>
             <Button size="lg" variant="flame" asChild>
-              <Link to="/new">
+              <AuthLink to="/new">
                 <PlusIcon weight="bold" />
                 {t('hero.ctaProblem')}
-              </Link>
+              </AuthLink>
             </Button>
           </motion.div>
         </motion.div>

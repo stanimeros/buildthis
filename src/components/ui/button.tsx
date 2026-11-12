@@ -1,6 +1,7 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
+import { SpinnerGapIcon } from "@phosphor-icons/react"
 import { Slot } from "radix-ui"
 
 const buttonVariants = cva(
@@ -47,10 +48,15 @@ function Button({
   variant = "default",
   size = "default",
   asChild = false,
+  loading = false,
+  disabled,
+  children,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
+    /** shows a spinner in place of the icon and disables the button */
+    loading?: boolean
   }) {
   const Comp = asChild ? Slot.Root : "button"
 
@@ -59,9 +65,25 @@ function Button({
       data-slot="button"
       data-variant={variant}
       data-size={size}
-      className={cn(buttonVariants({ variant, size, className }))}
+      data-loading={loading || undefined}
+      aria-busy={loading || undefined}
+      disabled={asChild ? undefined : disabled || loading}
+      className={cn(
+        buttonVariants({ variant, size, className }),
+        // While loading, the spinner replaces the button's own icon(s).
+        loading && "[&>svg:not([data-spinner])]:hidden"
+      )}
       {...props}
-    />
+    >
+      {asChild ? (
+        children
+      ) : (
+        <>
+          {loading && <SpinnerGapIcon data-spinner weight="bold" className="animate-spin" />}
+          {children}
+        </>
+      )}
+    </Comp>
   )
 }
 

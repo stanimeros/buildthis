@@ -96,7 +96,7 @@ function ProfileForm({ profile }: { profile: Profile }) {
           </Field>
         </>
       )}
-      <Button type="submit" size="lg" disabled={saving}>
+      <Button type="submit" size="lg" loading={saving}>
         {t('me.save')}
       </Button>
     </form>
@@ -248,7 +248,7 @@ export function MePage() {
       <section className="mt-8 rounded-[2rem] border border-destructive/30 p-6 sm:p-8">
         <h2 className="text-xl font-bold text-destructive">{t('me.danger')}</h2>
         <p className="mt-2 text-sm text-muted-foreground">{t('me.dangerBody')}</p>
-        <Button variant="destructive" className="mt-4" onClick={remove} disabled={deleting}>
+        <Button variant="destructive" className="mt-4" onClick={remove} loading={deleting}>
           <TrashIcon weight="bold" />
           {t('me.danger')}
         </Button>

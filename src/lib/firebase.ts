@@ -6,9 +6,16 @@ import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore'
 
 const env = import.meta.env
 
+// Sign-in must finish on the same site as the page: browsers now partition third-party storage, so
+// a popup that completes on *.firebaseapp.com can't hand the result back to buildthis.stanimeros.com.
+// Firebase Hosting serves /__/auth/* on every hosting domain, so use the page's own host there.
+// (Each host needs https://<host>/__/auth/handler in the OAuth client's authorized redirect URIs.)
+const isLocal = typeof window === 'undefined' || ['localhost', '127.0.0.1'].includes(location.hostname)
+const authDomain = isLocal ? env.PUBLIC_FIREBASE_AUTH_DOMAIN : location.hostname
+
 export const app = initializeApp({
   apiKey: env.PUBLIC_FIREBASE_API_KEY,
-  authDomain: env.PUBLIC_FIREBASE_AUTH_DOMAIN,
+  authDomain,
   projectId: env.PUBLIC_FIREBASE_PROJECT_ID,
   storageBucket: env.PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID,

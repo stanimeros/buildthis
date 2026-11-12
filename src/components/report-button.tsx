@@ -1,4 +1,4 @@
-import { FlagIcon } from '@phosphor-icons/react'
+import { FlagIcon, SpinnerGapIcon } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -65,10 +65,10 @@ export function ReportButton({
           disabled={reported || busy}
           className={cn('inline-flex items-center gap-1', reported ? 'opacity-60' : 'hover:text-destructive')}
         >
-          <FlagIcon weight={reported ? 'fill' : 'regular'} /> {label}
+          {busy ? <SpinnerGapIcon className="animate-spin" /> : <FlagIcon weight={reported ? 'fill' : 'regular'} />} {label}
         </button>
       ) : (
-        <Button size="lg" variant="ghost" onClick={click} disabled={reported || busy} className="text-muted-foreground">
+        <Button size="lg" variant="ghost" onClick={click} disabled={reported} loading={busy} className="text-muted-foreground">
           <FlagIcon weight={reported ? 'fill' : 'bold'} />
           {label}
         </Button>

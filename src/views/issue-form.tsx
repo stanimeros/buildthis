@@ -153,7 +153,7 @@ function IssueForm({
             </Field>
           )}
           <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}>
-            <Button type="submit" size="lg" variant="flame" className="group w-full" disabled={sending}>
+            <Button type="submit" size="lg" variant="flame" className="group w-full" loading={sending}>
               {t(sending ? 'newIssue.submitting' : editing ? 'newIssue.save' : 'newIssue.submit')}
               <PaperPlaneTiltIcon
                 weight="fill"
