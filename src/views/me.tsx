@@ -1,5 +1,5 @@
 import { SignOutIcon, TrashIcon } from '@phosphor-icons/react'
-import { motion } from 'motion/react'
+import { m } from 'motion/react'
 import { type FormEvent, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from '@/lib/nav'
@@ -132,7 +132,7 @@ function Lists({ uid }: { uid: string }) {
                 tab === id ? 'text-background' : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              {tab === id && <motion.span layoutId="me-tab" className="absolute inset-0 rounded-full bg-ink" />}
+              {tab === id && <m.span layoutId="me-tab" className="absolute inset-0 rounded-full bg-ink" />}
               <span className="relative">
                 {label} <span className="opacity-60 tabular-nums">{count}</span>
               </span>

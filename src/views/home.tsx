@@ -1,5 +1,5 @@
 import { ArrowRightIcon, HammerIcon, PlusIcon } from '@phosphor-icons/react'
-import { motion } from 'motion/react'
+import { m } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 import { Link } from '@/lib/nav'
 
@@ -13,7 +13,7 @@ function Bands() {
   const { t } = useTranslation()
   return (
     <section className="mx-auto grid max-w-5xl gap-5 px-4 py-16 md:grid-cols-2">
-      <motion.div
+      <m.div
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-60px' }}
@@ -30,8 +30,8 @@ function Bands() {
             <ArrowRightIcon weight="bold" />
           </Link>
         </Button>
-      </motion.div>
-      <motion.div
+      </m.div>
+      <m.div
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-60px' }}
@@ -45,7 +45,7 @@ function Bands() {
             {t('home.postCta')}
           </AuthLink>
         </Button>
-      </motion.div>
+      </m.div>
     </section>
   )
 }

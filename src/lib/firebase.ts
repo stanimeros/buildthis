@@ -1,4 +1,3 @@
-import { getAnalytics, isSupported, logEvent } from 'firebase/analytics'
 import { initializeApp } from 'firebase/app'
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check'
 import { connectAuthEmulator, getAuth } from 'firebase/auth'
@@ -40,10 +39,11 @@ if (import.meta.env.DEV && env.PUBLIC_USE_EMULATORS) {
   connectFirestoreEmulator(db, '127.0.0.1', 8080)
 }
 
+// Loaded in its own chunk so it doesn't delay the first render.
 const analytics = env.PUBLIC_FIREBASE_MEASUREMENT_ID && !env.PUBLIC_USE_EMULATORS && typeof window !== 'undefined'
-  ? isSupported().then((ok) => (ok ? getAnalytics(app) : null))
+  ? import('firebase/analytics').then(async (m) => ((await m.isSupported()) ? { ...m, instance: m.getAnalytics(app) } : null))
   : Promise.resolve(null)
 
 export function track(event: string, params?: Record<string, unknown>) {
-  analytics.then((a) => a && logEvent(a, event, params))
+  analytics.then((a) => a && a.logEvent(a.instance, event, params))
 }

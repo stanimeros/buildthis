@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://buildthis.stanimeros.com/sitemap.xml

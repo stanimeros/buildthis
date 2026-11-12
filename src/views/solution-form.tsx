@@ -1,6 +1,6 @@
 import { HammerIcon, HourglassIcon, RocketLaunchIcon } from '@phosphor-icons/react'
 import { doc, getDoc } from 'firebase/firestore'
-import { motion } from 'motion/react'
+import { m } from 'motion/react'
 import { type FormEvent, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from '@/lib/nav'
@@ -54,14 +54,14 @@ function ClaimGate({ issueId, claimed, waitMs }: { issueId: string; claimed: boo
     <Page narrow>
       <FormCard>
         <div className="flex flex-col items-center gap-4 py-4 text-center">
-          <motion.div
+          <m.div
             initial={{ scale: 0, rotate: -20 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{ type: 'spring', stiffness: 260, damping: 14 }}
             className="flex size-16 items-center justify-center rounded-2xl bg-lime"
           >
             {claimed ? <HourglassIcon weight="duotone" className="size-8" /> : <HammerIcon weight="duotone" className="size-8" />}
-          </motion.div>
+          </m.div>
           <h1 className="text-2xl font-extrabold tracking-tight">
             {t(claimed ? 'solution.claimWait' : 'solution.claimFirst')}
           </h1>
@@ -179,7 +179,7 @@ function SolutionForm({
               onChange={(e) => setBody(e.target.value)}
             />
           </Field>
-          <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}>
+          <m.div whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}>
             <Button type="submit" size="lg" variant="flame" className="group w-full" loading={sending}>
               {t(sending ? 'solution.submitting' : existing ? 'solution.save' : 'solution.submit')}
               <RocketLaunchIcon
@@ -187,7 +187,7 @@ function SolutionForm({
                 className="transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1"
               />
             </Button>
-          </motion.div>
+          </m.div>
         </form>
       </FormCard>
     </Page>

@@ -1,5 +1,5 @@
 import { EyeSlashIcon, HammerIcon, PuzzlePieceIcon } from '@phosphor-icons/react'
-import { motion } from 'motion/react'
+import { m } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 
 import { Avatar } from '@/components/avatar'
@@ -16,7 +16,7 @@ export function IssueCard({ issue, index = 0 }: { issue: Issue; index?: number }
   const { issueVotes } = useAuth()
 
   return (
-    <motion.li
+    <m.li
       layout
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
@@ -64,6 +64,6 @@ export function IssueCard({ issue, index = 0 }: { issue: Issue; index?: number }
           </div>
         </div>
       </Link>
-    </motion.li>
+    </m.li>
   )
 }

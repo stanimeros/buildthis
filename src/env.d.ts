@@ -11,3 +11,8 @@ interface ImportMetaEnv {
   readonly PUBLIC_RECAPTCHA_ENTERPRISE_KEY?: string
   readonly PUBLIC_USE_EMULATORS?: string
 }
+
+interface Window {
+  /** Set by the inline script in layouts/base.astro for an <AuthLink> clicked before hydration. */
+  __pendingAuthLink?: string
+}

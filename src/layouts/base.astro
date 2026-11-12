@@ -21,7 +21,7 @@ const {
   noindex = false,
 } = Astro.props
 const fullTitle = title ? `${title} · BuildThis` : 'BuildThis: build what people ask for'
-const canonical = new URL(Astro.url.pathname.replace(/\.html$/, ''), Astro.site)
+const canonical = new URL(Astro.url.pathname.replace(/\.html$/, '').replace(/\/index$/, '/'), Astro.site)
 ---
 
 <!doctype html>
@@ -31,6 +31,8 @@ const canonical = new URL(Astro.url.pathname.replace(/\.html$/, ''), Astro.site)
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f8f5ee" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://www.gstatic.com" />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
@@ -41,6 +43,24 @@ const canonical = new URL(Astro.url.pathname.replace(/\.html$/, ''), Astro.site)
     {!noindex && <meta property="og:url" content={canonical} />}
     <meta name="twitter:card" content="summary" />
     <ClientRouter />
+    <!-- An <AuthLink> clicked before its island has hydrated would just follow its href (and land on
+         "Sign in to continue"). Hold the click until the auth dialog in the header picks it up. -->
+    <script is:inline>
+      if (!window.__authLinkGuard) {
+        window.__authLinkGuard = true
+        document.addEventListener(
+          'click',
+          (e) => {
+            const a = e.target instanceof Element && e.target.closest('a[data-auth-link]')
+            if (!a || !a.closest('astro-island[ssr]')) return
+            e.preventDefault()
+            window.__pendingAuthLink = a.getAttribute('href')
+            window.dispatchEvent(new Event('buildthis:auth-link'))
+          },
+          true,
+        )
+      }
+    </script>
   </head>
   <body class="flex min-h-svh flex-col overflow-x-clip bg-background text-foreground">
     <HeaderIsland client:load transition:persist="header" />

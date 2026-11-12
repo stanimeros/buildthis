@@ -1,5 +1,5 @@
 import { GoogleLogoIcon, LockKeyIcon } from '@phosphor-icons/react'
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -10,7 +10,9 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { justSignedOut, signInWithGoogle, useAuth } from '@/lib/auth'
 import { closeAuthDialog, finishAuthDialog, openAuthDialog, useAuthDialogOpen } from '@/lib/auth-dialog'
 import { Link, navigate } from '@/lib/nav'
-import { OnboardingForm } from '@/views/onboarding'
+
+// Only new users see it, so it loads when the dialog first needs it.
+const OnboardingForm = lazy(() => import('@/views/onboarding').then((m) => ({ default: m.OnboardingForm })))
 
 function SignInStep() {
   const { t } = useTranslation()
@@ -55,6 +57,27 @@ export function AuthDialog() {
   const { t } = useTranslation()
   const open = useAuthDialogOpen()
   const { user, profile, loading } = useAuth()
+  const [early, setEarly] = useState<string | null>(null)
+
+  // Pick up an <AuthLink> clicked before its island hydrated (see layouts/base.astro).
+  useEffect(() => {
+    const take = () => {
+      const to = window.__pendingAuthLink
+      window.__pendingAuthLink = undefined
+      if (to) setEarly(to)
+    }
+    take()
+    window.addEventListener('buildthis:auth-link', take)
+    return () => window.removeEventListener('buildthis:auth-link', take)
+  }, [])
+
+  // Then do what the link would have done, once we know who's signed in.
+  useEffect(() => {
+    if (!early || loading) return
+    setEarly(null)
+    if (user && profile) navigate(early)
+    else openAuthDialog(early)
+  }, [early, loading, user, profile])
 
   useEffect(() => {
     if (!open || !user || !profile) return
@@ -75,7 +98,9 @@ export function AuthDialog() {
         ) : (
           <>
             <DialogTitle className="sr-only">{t('signin.title')}</DialogTitle>
-            <OnboardingForm />
+            <Suspense fallback={<Spinner />}>
+              <OnboardingForm />
+            </Suspense>
           </>
         )}
       </DialogContent>
@@ -111,6 +136,7 @@ export function AuthLink({ to, onClick, ...props }: React.ComponentProps<typeof 
   return (
     <Link
       to={to}
+      data-auth-link
       onClick={(e) => {
         onClick?.(e)
         if (user && profile) return

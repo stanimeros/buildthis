@@ -1,5 +1,5 @@
 import { ClockIcon, FireIcon, PlusIcon } from '@phosphor-icons/react'
-import { motion } from 'motion/react'
+import { m } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 
 import { categoryIcons } from '@/components/badges'
@@ -52,7 +52,7 @@ export function Board() {
                 sort === s ? 'text-background' : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              {sort === s && <motion.span layoutId="sort-pill" className="absolute inset-0 rounded-full bg-ink" />}
+              {sort === s && <m.span layoutId="sort-pill" className="absolute inset-0 rounded-full bg-ink" />}
               {s === 'top' ? (
                 <FireIcon weight="fill" className={cn('relative size-4', sort === s && 'text-primary')} />
               ) : (

@@ -1,5 +1,5 @@
 import { ArrowFatUpIcon } from '@phosphor-icons/react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m } from 'motion/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -42,7 +42,7 @@ export function VoteButton({
   }
 
   return (
-    <motion.button
+    <m.button
       type="button"
       onClick={click}
       aria-pressed={voted}
@@ -56,12 +56,12 @@ export function VoteButton({
         pending && 'animate-pulse',
       )}
     >
-      <motion.span animate={voted ? { y: [0, -6, 0] } : { y: 0 }} transition={{ duration: 0.35 }}>
+      <m.span animate={voted ? { y: [0, -6, 0] } : { y: 0 }} transition={{ duration: 0.35 }}>
         <ArrowFatUpIcon weight={voted ? 'fill' : 'bold'} className={size === 'lg' ? 'size-6' : 'size-5'} />
-      </motion.span>
+      </m.span>
       <span className="relative h-[1.25em] overflow-hidden tabular-nums">
         <AnimatePresence mode="popLayout" initial={false}>
-          <motion.span
+          <m.span
             key={votes}
             className="block"
             initial={{ y: 16, opacity: 0 }}
@@ -70,9 +70,9 @@ export function VoteButton({
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
           >
             {votes}
-          </motion.span>
+          </m.span>
         </AnimatePresence>
       </span>
-    </motion.button>
+    </m.button>
   )
 }

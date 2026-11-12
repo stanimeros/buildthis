@@ -1,5 +1,5 @@
 import { ArrowFatUpIcon, ChatCircleDotsIcon, TrophyIcon } from '@phosphor-icons/react'
-import { motion } from 'motion/react'
+import { m } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 
 const steps = [
@@ -13,7 +13,7 @@ export function HowItWorks() {
 
   return (
     <section className="mx-auto max-w-5xl px-4 py-24">
-      <motion.div
+      <m.div
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-80px' }}
@@ -21,11 +21,11 @@ export function HowItWorks() {
       >
         <p className="text-sm font-bold tracking-widest text-primary uppercase">{t('how.title')}</p>
         <h2 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-5xl">{t('how.kicker')}</h2>
-      </motion.div>
+      </m.div>
 
       <div className="mt-14 grid gap-5 sm:grid-cols-3">
         {steps.map(({ icon: Icon, key, tile, tilt }, i) => (
-          <motion.div
+          <m.div
             key={key}
             initial={{ opacity: 0, y: 40, rotate: 0 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -42,7 +42,7 @@ export function HowItWorks() {
             </div>
             <h3 className="mt-6 text-xl font-bold tracking-tight">{t(`how.${key}Title`)}</h3>
             <p className="mt-2 leading-relaxed text-muted-foreground">{t(`how.${key}Body`)}</p>
-          </motion.div>
+          </m.div>
         ))}
       </div>
     </section>

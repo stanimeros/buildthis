@@ -2,7 +2,7 @@ import {
   ArrowLeftIcon, ArrowSquareOutIcon, CheckIcon, EyeSlashIcon, HammerIcon, SpinnerGapIcon, PencilSimpleIcon,
   PlusIcon, ShareNetworkIcon, TrashIcon,
 } from '@phosphor-icons/react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from '@/lib/nav'
@@ -49,7 +49,7 @@ function BuildButton({ issue }: { issue: Issue }) {
   }
 
   return (
-    <motion.div whileTap={{ scale: 0.96 }}>
+    <m.div whileTap={{ scale: 0.96 }}>
       <Button
         size="lg"
         variant={building ? 'lime' : 'default'}
@@ -59,7 +59,7 @@ function BuildButton({ issue }: { issue: Issue }) {
         className="w-full sm:w-auto"
       >
         <AnimatePresence mode="wait" initial={false}>
-          {!pending && <motion.span
+          {!pending && <m.span
             key={building ? 'on' : 'off'}
             initial={{ rotate: -90, scale: 0 }}
             animate={{ rotate: 0, scale: 1 }}
@@ -67,12 +67,12 @@ function BuildButton({ issue }: { issue: Issue }) {
             className="flex"
           >
             {building ? <CheckIcon weight="bold" /> : <HammerIcon weight="duotone" />}
-          </motion.span>}
+          </m.span>}
         </AnimatePresence>
         {t(building ? 'issue.buildingActive' : 'issue.building')}
         <span className="rounded-full bg-background/20 px-2 py-0.5 text-sm tabular-nums">{issue.builders}</span>
       </Button>
-    </motion.div>
+    </m.div>
   )
 }
 
@@ -97,7 +97,7 @@ function SolutionItem({ solution, index }: { solution: Solution; index: number }
   }
 
   return (
-    <motion.li
+    <m.li
       layout
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
@@ -150,7 +150,7 @@ function SolutionItem({ solution, index }: { solution: Solution; index: number }
           {!mine && <ReportButton coll="solutions" id={solution.id} authorId={solution.authorId} compact />}
         </div>
       </div>
-    </motion.li>
+    </m.li>
   )
 }
 
@@ -227,7 +227,7 @@ export function IssuePage() {
         </div>
       )}
 
-      <motion.article
+      <m.article
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="mt-6 rounded-[2rem] border bg-card p-6 sm:p-8"
@@ -286,7 +286,7 @@ export function IssuePage() {
           )}
         </div>
         <p className="mt-3 text-sm text-muted-foreground">{t('issue.buildingHint')}</p>
-      </motion.article>
+      </m.article>
 
       <section className="mt-12">
         <div className="flex flex-wrap items-end justify-between gap-3">

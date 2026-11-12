@@ -1,11 +1,16 @@
 import '@/i18n'
 
-import { MotionConfig } from 'motion/react'
-import { type ReactNode, useEffect, useState } from 'react'
+import { LazyMotion, MotionConfig } from 'motion/react'
+import { lazy, type ReactNode, Suspense, useEffect, useState } from 'react'
 import { I18nextProvider } from 'react-i18next'
 
-import { RequireAuth } from '@/components/require-auth'
+import { Spinner } from '@/components/spinner'
 import i18n, { applyDetectedLanguage } from '@/i18n'
+
+// Lazy so islands without `auth` (footer, home) don't wait for Firebase to hydrate.
+const RequireAuth = lazy(() => import('@/components/require-auth').then((m) => ({ default: m.RequireAuth })))
+// Animation code loads after the first render; `m.*` components render their initial state until then.
+const motionFeatures = () => import('@/lib/motion-features').then((m) => m.default)
 
 /**
  * Shared wrapper for every React island.
@@ -28,7 +33,17 @@ export function Island({ children, auth, ssr }: { children: ReactNode; auth?: bo
 
   return (
     <I18nextProvider i18n={instance}>
-      <MotionConfig reducedMotion="user">{auth ? <RequireAuth>{children}</RequireAuth> : children}</MotionConfig>
+      <LazyMotion features={motionFeatures}>
+        <MotionConfig reducedMotion="user">
+          {auth ? (
+            <Suspense fallback={<Spinner />}>
+              <RequireAuth>{children}</RequireAuth>
+            </Suspense>
+          ) : (
+            children
+          )}
+        </MotionConfig>
+      </LazyMotion>
     </I18nextProvider>
   )
 }

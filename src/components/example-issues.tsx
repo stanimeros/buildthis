@@ -1,5 +1,5 @@
 import { HammerIcon } from '@phosphor-icons/react'
-import { motion } from 'motion/react'
+import { m } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 
 // Shown on the home page only while nobody has posted a real issue yet.
@@ -17,7 +17,7 @@ export function ExampleIssues() {
       <p className="mb-4 text-center text-sm font-semibold text-muted-foreground">{t('examples.subtitle')}</p>
       <ul className="space-y-3 opacity-80">
         {examples.map(({ id, votes, builders }, i) => (
-          <motion.li
+          <m.li
             key={id}
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -38,7 +38,7 @@ export function ExampleIssues() {
                 </span>
               </div>
             </div>
-          </motion.li>
+          </m.li>
         ))}
       </ul>
     </div>

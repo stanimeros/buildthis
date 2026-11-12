@@ -32,5 +32,21 @@ export default defineConfig({
   trailingSlash: 'never',
   build: { format: 'file' },
   integrations: [react()],
-  vite: { plugins: [tailwindcss(), devRewrites()] },
+  vite: {
+    plugins: [tailwindcss(), devRewrites()],
+    build: {
+      rolldownOptions: {
+        output: {
+          // Firebase and React get their own long-cached chunks, so a deploy only re-downloads our code.
+          // Everything else splits by usage, so page-specific libraries stay off the other pages.
+          codeSplitting: {
+            groups: [
+              { name: 'firebase', test: /node_modules[\\/](@firebase|firebase|re2js|idb)[\\/]/ },
+              { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/ },
+            ],
+          },
+        },
+      },
+    },
+  },
 })

@@ -1,5 +1,5 @@
 import { HammerIcon, LightbulbIcon, SparkleIcon } from '@phosphor-icons/react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m } from 'motion/react'
 import { type FormEvent, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Navigate, useSearchParams } from '@/lib/nav'
@@ -33,7 +33,7 @@ export function RolePicker({ value, onChange }: { value: Role | null; onChange: 
   return (
     <div role="radiogroup" className="grid gap-3">
       {roleCards.map(({ role, icon: Icon, tile }) => (
-        <motion.button
+        <m.button
           key={role}
           type="button"
           role="radio"
@@ -53,7 +53,7 @@ export function RolePicker({ value, onChange }: { value: Role | null; onChange: 
             <span className="block font-heading text-lg font-bold">{t(`onboarding.${roleKey[role]}`)}</span>
             <span className="text-sm text-muted-foreground">{t(`onboarding.${roleKey[role]}Body`)}</span>
           </span>
-        </motion.button>
+        </m.button>
       ))}
     </div>
   )
@@ -104,7 +104,7 @@ export function OnboardingForm() {
       <div className="flex items-center gap-3 pr-8">
         <span className="text-sm font-bold text-primary">{t('onboarding.step', { n: step })}</span>
         <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-          <motion.div
+          <m.div
             className="h-full rounded-full bg-primary"
             animate={{ width: step === 1 ? '50%' : '100%' }}
             transition={{ type: 'spring', stiffness: 120, damping: 20 }}
@@ -112,7 +112,7 @@ export function OnboardingForm() {
         </div>
       </div>
       <AnimatePresence mode="wait" initial={false}>
-        <motion.div
+        <m.div
           key={step}
           initial={{ opacity: 0, x: 30 }}
           animate={{ opacity: 1, x: 0 }}
@@ -171,7 +171,7 @@ export function OnboardingForm() {
               </div>
             </form>
           )}
-        </motion.div>
+        </m.div>
       </AnimatePresence>
     </div>
   )

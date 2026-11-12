@@ -1,5 +1,5 @@
 import { PaperPlaneTiltIcon } from '@phosphor-icons/react'
-import { motion } from 'motion/react'
+import { m } from 'motion/react'
 import { type FormEvent, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from '@/lib/nav'
@@ -152,7 +152,7 @@ function IssueForm({
               />
             </Field>
           )}
-          <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}>
+          <m.div whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}>
             <Button type="submit" size="lg" variant="flame" className="group w-full" loading={sending}>
               {t(sending ? 'newIssue.submitting' : editing ? 'newIssue.save' : 'newIssue.submit')}
               <PaperPlaneTiltIcon
@@ -160,7 +160,7 @@ function IssueForm({
                 className="transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 group-hover:rotate-12"
               />
             </Button>
-          </motion.div>
+          </m.div>
         </form>
       </FormCard>
     </Page>
