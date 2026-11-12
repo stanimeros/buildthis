@@ -1,17 +1,26 @@
 {
   "format": "json",
   "files": "src/i18n/locales/{lang}/{ns}.json",
-  "languages": ["en", "el"],
+  "languages": [
+    "en",
+    "el"
+  ],
   "primary": "en",
   "lockFile": "i18n.lock.json",
-  "context": "BuildThis is a platform where people post problems they want an app for, everyone upvotes the ones they share, and developers/founders (builders) build solutions and compete on the same problem. Audience: Greek and international indie hackers, developers and everyday users. Tone: friendly, short, direct.",
+  "context": "BuildThis is a platform where people post problems (never call them 'issues') they want an app for, everyone upvotes the ones they share, and developers/founders (builders) build solutions and compete on the same problem. Audience: Greek and international indie hackers, developers and everyday users. Tone: friendly, short, direct.",
   "glossary": {
     "BuildThis": "BuildThis",
     "upvote": "upvote",
     "builder": "builder",
     "builders": "builders",
-    "issue": "issue",
-    "issues": "issues"
+    "problem": {
+      "el": "πρόβλημα"
+    },
+    "problems": {
+      "el": "προβλήματα"
+    }
   },
-  "tone": { "el": "informal (εσύ)" }
+  "tone": {
+    "el": "informal (εσύ)"
+  }
 }

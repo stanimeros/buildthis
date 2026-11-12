@@ -1,4 +1,4 @@
-import { RocketLaunchIcon } from '@phosphor-icons/react'
+import { HammerIcon, HourglassIcon, RocketLaunchIcon } from '@phosphor-icons/react'
 import { doc, getDoc } from 'firebase/firestore'
 import { motion } from 'motion/react'
 import { type FormEvent, useEffect, useState } from 'react'
@@ -13,20 +13,21 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/lib/auth'
-import { inCooldown } from '@/lib/cooldown'
+import { claimWaitLeft, inCooldown, LIMITS, usedToday } from '@/lib/quota'
 import { solutionId, submitSolution, updateSolution } from '@/lib/data'
 import { db } from '@/lib/firebase'
-import { useIssue } from '@/lib/hooks'
+import { useClaim, useIssue } from '@/lib/hooks'
 import { limits, type Solution } from '@/lib/types'
 import { NotFoundPage } from '@/views/not-found'
 
 const URL_RE = /^https:\/\/[^\s]+\.[^\s]+$/
 
-/** /issues/:id/submit — creates, or edits if the user already submitted one. */
+/** /p/:id/submit: creates, or edits if the user already submitted one. */
 export function SolutionFormPage() {
   const { id = '' } = useParams()
   const { user } = useAuth()
   const { issue, loading } = useIssue(id)
+  const claim = useClaim(id)
   const [existing, setExisting] = useState<{ id: string; data: Solution | null } | null>(null)
 
   useEffect(() => {
@@ -37,9 +38,43 @@ export function SolutionFormPage() {
       .catch(() => setExisting({ id: sid, data: null }))
   }, [id, user])
 
-  if (loading || !existing) return <Spinner />
+  if (loading || !existing || claim === undefined) return <Spinner />
   if (!issue) return <NotFoundPage />
+  // New submissions need a claim at least an hour old (enforced by the rules too).
+  const waitMs = claimWaitLeft(claim)
+  if (!existing.data && waitMs > 0) return <ClaimGate issueId={issue.id} claimed={!!claim} waitMs={waitMs} />
   return <SolutionForm issueId={issue.id} issueTitle={issue.title} existing={existing.data} />
+}
+
+function ClaimGate({ issueId, claimed, waitMs }: { issueId: string; claimed: boolean; waitMs: number }) {
+  const { t } = useTranslation()
+  return (
+    <Page narrow>
+      <FormCard>
+        <div className="flex flex-col items-center gap-4 py-4 text-center">
+          <motion.div
+            initial={{ scale: 0, rotate: -20 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 14 }}
+            className="flex size-16 items-center justify-center rounded-2xl bg-lime"
+          >
+            {claimed ? <HourglassIcon weight="duotone" className="size-8" /> : <HammerIcon weight="duotone" className="size-8" />}
+          </motion.div>
+          <h1 className="text-2xl font-extrabold tracking-tight">
+            {t(claimed ? 'solution.claimWait' : 'solution.claimFirst')}
+          </h1>
+          <p className="text-muted-foreground">
+            {claimed
+              ? t('solution.claimWaitBody', { minutes: Math.ceil(waitMs / 60_000) })
+              : t('solution.claimFirstBody')}
+          </p>
+          <Button size="lg" asChild>
+            <Link to={`/p/${issueId}`}>{t('solution.backToProblem')}</Link>
+          </Button>
+        </div>
+      </FormCard>
+    </Page>
+  )
 }
 
 function SolutionForm({
@@ -69,7 +104,11 @@ function SolutionForm({
     }
     setErrors(next)
     if (next.title || next.url) return
-    if (!existing && inCooldown(profile?.lastSolutionAt, 2)) {
+    if (!existing && profile && usedToday(profile, 'solutions') >= LIMITS.solutionsPerDay) {
+      toast.error(t('solution.dailyLimit'))
+      return
+    }
+    if (!existing && inCooldown(profile?.lastSolutionAt, LIMITS.solutionCooldownMin)) {
       toast.error(t('solution.cooldown'))
       return
     }
@@ -77,7 +116,7 @@ function SolutionForm({
     try {
       if (existing) await updateSolution(existing.id, clean)
       else await submitSolution(profile!, issueId, clean)
-      navigate(`/issues/${issueId}`)
+      navigate(`/p/${issueId}`)
     } catch (err) {
       console.error(err)
       toast.error(t('solution.error'))
@@ -88,7 +127,7 @@ function SolutionForm({
   return (
     <Page narrow title={t(existing ? 'solution.editTitle' : 'solution.title')} subtitle={t('solution.subtitle')}>
       <Link
-        to={`/issues/${issueId}`}
+        to={`/p/${issueId}`}
         className="mt-4 inline-block rounded-full bg-muted px-3 py-1 text-sm font-semibold hover:bg-secondary"
       >
         {t('solution.forIssue', { title: issueTitle })}

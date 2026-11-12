@@ -1,7 +1,7 @@
 import { PlusIcon } from '@phosphor-icons/react'
 import { motion } from 'motion/react'
 import { useTranslation } from 'react-i18next'
-import { Link, NavLink } from '@/lib/nav'
+import { Link } from '@/lib/nav'
 
 import { Avatar } from '@/components/avatar'
 import { Logo } from '@/components/logo'
@@ -25,20 +25,7 @@ export function Header() {
       className="sticky top-3 z-20 px-4"
     >
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-2 rounded-full border bg-card/80 py-2 pr-2 pl-4 shadow-[0_8px_30px_-12px_oklch(0.18_0.01_60/0.25)] backdrop-blur-md">
-        <div className="flex items-center gap-5">
-          <Logo />
-          <NavLink
-            to="/issues"
-            className={({ isActive }) =>
-              cn(
-                'hidden text-sm font-bold transition-colors sm:block',
-                isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
-              )
-            }
-          >
-            {t('nav.issues')}
-          </NavLink>
-        </div>
+        <Logo />
         <div className="flex items-center gap-1.5 sm:gap-2">
           <div role="radiogroup" aria-label={t('nav.language')} className="flex rounded-full bg-muted p-1">
             {languages.map((l) => (

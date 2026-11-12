@@ -20,6 +20,7 @@
     "@phosphor-icons/react": "^2.1.10",
     "astro": "^7.4.11",
     "class-variance-authority": "^0.7.1",
+    "cmdk": "^1.1.1",
     "cn": "^0.5.2",
     "firebase": "^13.3.0",
     "i18next": "^27.1.1",

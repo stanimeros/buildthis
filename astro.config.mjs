@@ -6,9 +6,9 @@ import { defineConfig } from 'astro/config'
 // Dynamic issue URLs are served by a few static pages. Firebase Hosting does this with the
 // `rewrites` in firebase.json; this mirrors them for `astro dev`.
 const rewrites = [
-  [/^\/issues\/[^/]+\/edit$/, '/issue-edit'],
-  [/^\/issues\/[^/]+\/submit$/, '/issue-submit'],
-  [/^\/issues\/[^/]+$/, '/issue'],
+  [/^\/p\/[^/]+\/edit$/, '/problem-edit'],
+  [/^\/p\/[^/]+\/submit$/, '/problem-submit'],
+  [/^\/p\/[^/]+$/, '/problem'],
 ]
 
 /** @returns {import('vite').Plugin} */

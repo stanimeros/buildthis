@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next'
-import { Link } from '@/lib/nav'
 
 import { Logo } from '@/components/logo'
 
@@ -13,12 +12,18 @@ export function Footer() {
       <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-4 py-10 text-sm text-muted-foreground sm:flex-row">
         <Logo />
         <p className="text-center">{t('footer.tagline')}</p>
-        <div className="flex gap-4">
-          <Link to="/issues" className="hover:text-foreground">
-            {t('nav.issues')}
-          </Link>
-          <span>© {year}</span>
-        </div>
+        <p>
+          {t('footer.poweredBy')}{' '}
+          <a
+            href="https://stanimeros.com"
+            target="_blank"
+            rel="noopener"
+            className="font-bold text-foreground underline decoration-lime decoration-2 underline-offset-4 transition-colors hover:decoration-primary"
+          >
+            stanimeros.com
+          </a>{' '}
+          · © {year}
+        </p>
       </div>
     </footer>
   )

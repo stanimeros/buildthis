@@ -6,9 +6,6 @@ export const categories = [
 ] as const
 export type Category = (typeof categories)[number]
 
-export const platforms = ['any', 'web', 'ios', 'android'] as const
-export type Platform = (typeof platforms)[number]
-
 export const roles = ['user', 'builder', 'both'] as const
 export type Role = (typeof roles)[number]
 
@@ -18,13 +15,20 @@ export interface Profile {
   name: string
   photo: string
   role: Role
+  /** ISO 3166-1 alpha-2, or '' */
   country: string
+  city?: string
   stack: string[]
   link: string
   lang: 'en' | 'el'
   source: string
   lastIssueAt?: Timestamp
   lastSolutionAt?: Timestamp
+  /** daily quotas (see src/lib/quota.ts) */
+  issuesDay?: number
+  issuesToday?: number
+  solutionsDay?: number
+  solutionsToday?: number
   onboardedAt: Timestamp
   createdAt: Timestamp
 }
@@ -34,7 +38,10 @@ export interface Issue {
   title: string
   body: string
   category: Category
-  platform: Platform
+  /** '' = anywhere, else ISO 3166-1 alpha-2 */
+  country: string
+  /** only when country is set */
+  city: string
   authorId: string
   authorName: string
   authorPhoto: string
@@ -42,6 +49,15 @@ export interface Issue {
   builders: number
   solutions: number
   createdAt: Timestamp | null
+}
+
+/** Fields of an issue the author controls. */
+export interface IssueInput {
+  title: string
+  body: string
+  category: Category
+  country: string
+  city: string
 }
 
 export interface Solution {
@@ -63,4 +79,5 @@ export const limits = {
   solutionTitle: [2, 80],
   solutionBody: [0, 1000],
   name: [1, 60],
+  city: [0, 60],
 } as const

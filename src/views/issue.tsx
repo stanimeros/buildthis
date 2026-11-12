@@ -1,5 +1,5 @@
 import {
-  ArrowLeftIcon, ArrowSquareOutIcon, CheckIcon, DeviceMobileIcon, HammerIcon, PencilSimpleIcon,
+  ArrowLeftIcon, ArrowSquareOutIcon, CheckIcon, HammerIcon, PencilSimpleIcon,
   PlusIcon, ShareNetworkIcon, TrashIcon,
 } from '@phosphor-icons/react'
 import { AnimatePresence, motion } from 'motion/react'
@@ -9,6 +9,8 @@ import { Link, useNavigate, useParams } from '@/lib/nav'
 import { toast } from 'sonner'
 
 import { Avatar } from '@/components/avatar'
+import { useConfirm } from '@/components/confirm'
+import { PlaceChip } from '@/components/place'
 import { useRequireSignIn } from '@/components/require-auth'
 import { Spinner } from '@/components/spinner'
 import { Button } from '@/components/ui/button'
@@ -18,24 +20,25 @@ import {
   adminDeleteIssue, removeSolution, solutionId, toggleBuilder, toggleIssueVote, toggleSolutionVote,
 } from '@/lib/data'
 import { hostOf, timeAgo } from '@/lib/format'
-import { useBuilding, useIssue, useSolutions } from '@/lib/hooks'
+import { useClaim, useIssue, useSolutions } from '@/lib/hooks'
 import type { Issue, Solution } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 function BuildButton({ issue }: { issue: Issue }) {
   const { t } = useTranslation()
   const { user, profile } = useAuth()
-  const building = useBuilding(issue.id)
+  const claim = useClaim(issue.id)
+  const building = !!claim
   const requireSignIn = useRequireSignIn()
   const navigate = useNavigate()
   const [pending, setPending] = useState(false)
 
   async function click() {
     if (!user) return requireSignIn()
-    if (!profile) return navigate(`/onboarding?next=${encodeURIComponent(`/issues/${issue.id}`)}`)
+    if (!profile) return navigate(`/onboarding?next=${encodeURIComponent(`/p/${issue.id}`)}`)
     setPending(true)
     try {
-      await toggleBuilder(issue.id, building)
+      await toggleBuilder(profile, issue.id, building)
     } catch (err) {
       console.error(err)
       toast.error(t('common.error'))
@@ -76,9 +79,11 @@ function SolutionItem({ solution, index }: { solution: Solution; index: number }
   const { t } = useTranslation()
   const { user, isAdmin, solutionVotes } = useAuth()
   const mine = user?.uid === solution.authorId
+  const [dialog, confirm] = useConfirm()
 
   async function remove() {
-    if (!confirm(t('issue.deleteSolutionConfirm'))) return
+    const ok = await confirm({ title: t('issue.deleteSolutionConfirm'), confirmLabel: t('issue.delete'), destructive: true })
+    if (!ok) return
     try {
       await removeSolution(solution.id, solution.issueId, !mine && isAdmin)
     } catch (err) {
@@ -95,6 +100,7 @@ function SolutionItem({ solution, index }: { solution: Solution; index: number }
       transition={{ type: 'spring', stiffness: 260, damping: 28, delay: index * 0.04 }}
       className={cn('flex items-start gap-4 rounded-3xl border bg-card p-3 pr-5', mine && 'border-primary/40')}
     >
+      {dialog}
       <VoteButton
         votes={solution.votes}
         voted={solutionVotes.has(solution.id)}
@@ -128,7 +134,7 @@ function SolutionItem({ solution, index }: { solution: Solution; index: number }
             {solution.authorName} · {timeAgo(solution.createdAt)}
           </span>
           {mine && (
-            <Link to={`/issues/${solution.issueId}/submit`} className="inline-flex items-center gap-1 hover:text-foreground">
+            <Link to={`/p/${solution.issueId}/submit`} className="inline-flex items-center gap-1 hover:text-foreground">
               <PencilSimpleIcon /> {t('issue.edit')}
             </Link>
           )}
@@ -150,6 +156,7 @@ export function IssuePage() {
   const { user, isAdmin, issueVotes } = useAuth()
   const { issue, loading } = useIssue(id)
   const solutions = useSolutions(id)
+  const [dialog, confirm] = useConfirm()
 
   useEffect(() => {
     if (issue) document.title = `${issue.title} · BuildThis`
@@ -161,7 +168,7 @@ export function IssuePage() {
       <div className="mx-auto max-w-xl px-4 py-24 text-center">
         <p className="text-lg text-muted-foreground">{t('issue.notFound')}</p>
         <Button className="mt-6" asChild>
-          <Link to="/issues">{t('issue.back')}</Link>
+          <Link to="/">{t('issue.back')}</Link>
         </Button>
       </div>
     )
@@ -184,15 +191,17 @@ export function IssuePage() {
   }
 
   async function adminDelete() {
-    if (!confirm(t('issue.adminDeleteConfirm'))) return
+    const ok = await confirm({ title: t('issue.adminDeleteConfirm'), confirmLabel: t('issue.delete'), destructive: true })
+    if (!ok) return
     await adminDeleteIssue(issue!.id)
-    navigate('/issues')
+    navigate('/')
   }
 
   return (
     <div className="mx-auto max-w-3xl px-4 pt-10">
+      {dialog}
       <Link
-        to="/issues"
+        to="/"
         className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground"
       >
         <ArrowLeftIcon weight="bold" /> {t('issue.back')}
@@ -216,15 +225,12 @@ export function IssuePage() {
             </h1>
             <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm font-semibold text-muted-foreground">
               <Link
-                to={`/issues?category=${issue.category}`}
+                to={`/?category=${issue.category}`}
                 className="rounded-full bg-muted px-3 py-1 hover:bg-secondary"
               >
                 {t(`categories.${issue.category}`)}
               </Link>
-              <span className="inline-flex items-center gap-1">
-                <DeviceMobileIcon weight="duotone" className="size-4" />
-                {t(`platforms.${issue.platform}`)}
-              </span>
+              <PlaceChip country={issue.country} city={issue.city} className="px-3" />
               <span className="inline-flex items-center gap-1.5">
                 <Avatar name={issue.authorName} photo={issue.authorPhoto} className="size-5" />
                 {t('issue.by', { name: issue.authorName })} · {timeAgo(issue.createdAt)}
@@ -243,7 +249,7 @@ export function IssuePage() {
           </Button>
           {mine && (
             <Button size="lg" variant="ghost" asChild>
-              <Link to={`/issues/${issue.id}/edit`}>
+              <Link to={`/p/${issue.id}/edit`}>
                 <PencilSimpleIcon weight="bold" />
                 {t('issue.edit')}
               </Link>
@@ -267,7 +273,7 @@ export function IssuePage() {
           </h2>
           {!submitted && (
             <Button variant="flame" asChild>
-              <Link to={`/issues/${issue.id}/submit`}>
+              <Link to={`/p/${issue.id}/submit`}>
                 <PlusIcon weight="bold" />
                 {t('issue.submitSolution')}
               </Link>

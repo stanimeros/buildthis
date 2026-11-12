@@ -3,54 +3,10 @@ import { motion } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 import { Link } from '@/lib/nav'
 
-import { ExampleIssues } from '@/components/example-issues'
+import { Board } from '@/components/board'
 import { Hero } from '@/components/hero'
 import { HowItWorks } from '@/components/how-it-works'
-import { IssueCard } from '@/components/issue-card'
-import { Marquee } from '@/components/marquee'
-import { Spinner } from '@/components/spinner'
 import { Button } from '@/components/ui/button'
-import { useIssues } from '@/lib/hooks'
-
-function TopIssues() {
-  const { t } = useTranslation()
-  const { data, loading } = useIssues('top', 'all', 5)
-
-  return (
-    <section className="mx-auto max-w-3xl px-4 py-16">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: '-80px' }}
-        className="text-center"
-      >
-        <h2 className="text-3xl font-extrabold tracking-tight sm:text-5xl">{t('home.topTitle')}</h2>
-        <p className="mt-3 text-lg text-muted-foreground">{t('home.topSubtitle')}</p>
-      </motion.div>
-      <div className="mt-12">
-        {loading ? (
-          <Spinner />
-        ) : data.length === 0 ? (
-          <ExampleIssues />
-        ) : (
-          <ul className="space-y-3">
-            {data.map((issue, i) => (
-              <IssueCard key={issue.id} issue={issue} index={i} />
-            ))}
-          </ul>
-        )}
-      </div>
-      <div className="mt-8 flex justify-center">
-        <Button variant="outline" size="lg" asChild>
-          <Link to="/issues">
-            {t('home.seeAll')}
-            <ArrowRightIcon weight="bold" />
-          </Link>
-        </Button>
-      </div>
-    </section>
-  )
-}
 
 function Bands() {
   const { t } = useTranslation()
@@ -68,7 +24,7 @@ function Bands() {
           <p className="mt-3 text-background/70">{t('home.builderBody')}</p>
         </div>
         <Button variant="lime" size="lg" className="self-start" asChild>
-          <Link to="/issues">
+          <Link to="/#board">
             {t('home.builderCta')}
             <ArrowRightIcon weight="bold" />
           </Link>
@@ -97,9 +53,10 @@ export function HomePage() {
   return (
     <>
       <Hero />
-      <Marquee />
-      <TopIssues />
-      <HowItWorks />
+      <Board />
+      <div className="mt-16">
+        <HowItWorks />
+      </div>
       <Bands />
     </>
   )

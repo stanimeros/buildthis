@@ -9,16 +9,16 @@
     ],
     "rewrites": [
       {
-        "source": "/issues/*/edit",
-        "destination": "/issue-edit.html"
+        "source": "/p/*/edit",
+        "destination": "/problem-edit.html"
       },
       {
-        "source": "/issues/*/submit",
-        "destination": "/issue-submit.html"
+        "source": "/p/*/submit",
+        "destination": "/problem-submit.html"
       },
       {
-        "source": "/issues/*",
-        "destination": "/issue.html"
+        "source": "/p/*",
+        "destination": "/problem.html"
       }
     ],
     "headers": [
@@ -33,7 +33,19 @@
       }
     ],
     "cleanUrls": true,
-    "trailingSlash": false
+    "trailingSlash": false,
+    "redirects": [
+      {
+        "source": "/issues",
+        "destination": "/",
+        "type": 301
+      },
+      {
+        "source": "/issues/:rest*",
+        "destination": "/p/:rest*",
+        "type": 301
+      }
+    ]
   },
   "firestore": {
     "rules": "firestore.rules",

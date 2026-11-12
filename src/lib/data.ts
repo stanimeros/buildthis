@@ -1,11 +1,12 @@
 import { deleteUser } from 'firebase/auth'
 import {
-  collection, deleteDoc, doc, getDocs, increment, query, serverTimestamp, setDoc, updateDoc,
-  where, writeBatch,
+  collection, deleteDoc, doc, getDocs, increment, limit, orderBy, query, type QueryDocumentSnapshot,
+  serverTimestamp, setDoc, startAfter, updateDoc, where, writeBatch,
 } from 'firebase/firestore'
 
 import { auth, db, track } from '@/lib/firebase'
-import type { Category, Platform, Profile, Role } from '@/lib/types'
+import { bumpDaily } from '@/lib/quota'
+import type { IssueInput, Profile, Role } from '@/lib/types'
 
 function me() {
   const user = auth.currentUser
@@ -17,6 +18,7 @@ export interface ProfileInput {
   name: string
   role: Role
   country: string
+  city: string
   stack: string[]
   link: string
   lang: 'en' | 'el'
@@ -40,7 +42,7 @@ export async function updateProfile(input: ProfileInput) {
 
 export async function postIssue(
   profile: Profile,
-  input: { title: string; body: string; category: Category; platform: Platform },
+  input: IssueInput,
 ) {
   const user = me()
   const ref = doc(collection(db, 'issues'))
@@ -55,7 +57,7 @@ export async function postIssue(
     solutions: 0,
     createdAt: serverTimestamp(),
   })
-  batch.update(doc(db, 'users', user.uid), { lastIssueAt: serverTimestamp() })
+  batch.update(doc(db, 'users', user.uid), { lastIssueAt: serverTimestamp(), ...bumpDaily(profile, 'issues') })
   await batch.commit()
   track('post_issue', { category: input.category })
   return ref.id
@@ -63,7 +65,7 @@ export async function postIssue(
 
 export async function updateIssue(
   id: string,
-  input: { title: string; body: string; category: Category; platform: Platform },
+  input: IssueInput,
 ) {
   await updateDoc(doc(db, 'issues', id), input)
 }
@@ -79,9 +81,11 @@ export async function toggleIssueVote(issueId: string, voted: boolean) {
   if (!voted) track('vote', { target: 'issue' })
 }
 
-export async function toggleBuilder(issueId: string, building: boolean) {
+/** Claiming makes a plain "user" a builder too (role 'both'); rules require a builder role. */
+export async function toggleBuilder(profile: Profile, issueId: string, building: boolean) {
   const uid = me().uid
   const batch = writeBatch(db)
+  if (!building && profile.role === 'user') batch.update(doc(db, 'users', uid), { role: 'both' })
   const ref = doc(db, 'issues', issueId, 'builders', uid)
   if (building) batch.delete(ref)
   else batch.set(ref, { uid, issueId, createdAt: serverTimestamp() })
@@ -111,7 +115,7 @@ export async function submitSolution(
     createdAt: serverTimestamp(),
   })
   batch.update(doc(db, 'issues', issueId), { solutions: increment(1) })
-  batch.update(doc(db, 'users', uid), { lastSolutionAt: serverTimestamp() })
+  batch.update(doc(db, 'users', uid), { lastSolutionAt: serverTimestamp(), ...bumpDaily(profile, 'solutions') })
   await batch.commit()
   track('submit_solution')
 }
@@ -147,14 +151,26 @@ export async function adminDeleteIssue(id: string) {
 export async function deleteAccount() {
   const user = me()
   const anon = { authorName: 'Deleted user', authorPhoto: '' }
-  const [issues, solutions] = await Promise.all([
-    getDocs(query(collection(db, 'issues'), where('authorId', '==', user.uid))),
-    getDocs(query(collection(db, 'solutions'), where('authorId', '==', user.uid))),
-  ])
-  const batch = writeBatch(db)
-  issues.forEach((d) => batch.update(d.ref, anon))
-  solutions.forEach((d) => batch.update(d.ref, anon))
-  batch.delete(doc(db, 'users', user.uid))
-  await batch.commit()
+  // Lists are capped at 50 per request by the rules, so page through.
+  for (const path of ['issues', 'solutions']) {
+    let cursor: QueryDocumentSnapshot | undefined
+    for (;;) {
+      const page = await getDocs(
+        query(
+          collection(db, path),
+          where('authorId', '==', user.uid),
+          orderBy('createdAt'),
+          ...(cursor ? [startAfter(cursor)] : []),
+          limit(50),
+        ),
+      )
+      if (page.empty) break
+      const batch = writeBatch(db)
+      page.forEach((d) => batch.update(d.ref, anon))
+      await batch.commit()
+      cursor = page.docs.at(-1)
+    }
+  }
+  await deleteDoc(doc(db, 'users', user.uid))
   await deleteUser(user)
 }

@@ -14,8 +14,9 @@ react-i18next (EN/GR) · Firebase (Hosting, Auth, Firestore, Analytics)
   build time; app pages mount a client-only React island (`src/islands` → `src/views`).
 - Navigation uses Astro's `<ClientRouter />` (view transitions). Header and footer persist across pages.
 - Auth state is a module-level store (`src/lib/auth.tsx`) shared by all islands.
-- `/issues/:id`, `/issues/:id/edit` and `/issues/:id/submit` are served by `issue*.html` through
-  Firebase Hosting rewrites (mirrored in `astro.config.mjs` for dev).
+- The home page is the vote board. `/p/:id`, `/p/:id/edit` and `/p/:id/submit` are served by
+  `problem*.html` through Firebase Hosting rewrites (mirrored in `astro.config.mjs` for dev).
+  Old `/issues…` URLs redirect. Internally (Firestore, code) a problem is still called an `issue`.
 
 ## Setup
 
@@ -61,4 +62,4 @@ npm run build
 firebase deploy --only hosting,firestore
 ```
 
-Admins: create an (empty) document `admins/{uid}` in the Firebase console. Admins can delete issues and solutions.
+Admins: create an (empty) document `admins/{uid}` in the Firebase console. Admins can delete problems and solutions.

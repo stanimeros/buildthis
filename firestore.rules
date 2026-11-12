@@ -34,8 +34,13 @@ service cloud.firestore {
               'transport', 'food', 'social', 'work', 'other'];
     }
 
-    function platforms() {
-      return ['web', 'ios', 'android', 'any'];
+    function validCountry(c) {
+      return c is string && (c == '' || c.matches('^[A-Z]{2}$'));
+    }
+
+    // Problem scope: anywhere (no city), or a country with an optional city.
+    function validPlace(d) {
+      return validCountry(d.country) && str(d.city, 0, 60) && (d.country != '' || d.city == '');
     }
 
     function changed() {
@@ -57,15 +62,54 @@ service cloud.firestore {
             || before[lastField] < request.time - duration.value(minutes, 'm'));
     }
 
+    // ---------- anti-abuse ----------
+
+    // UTC day as an int, e.g. 20261112. The client sends the same key (src/lib/quota.ts).
+    function todayKey() {
+      return request.time.year() * 10000 + request.time.month() * 100 + request.time.day();
+    }
+
+    // On the user doc: a daily counter may only move to today, by +1 (or restart at 1), up to `cap`.
+    function validDaily(dayField, countField, cap) {
+      let oldDay = resource.data.get(dayField, 0);
+      let oldCount = resource.data.get(countField, 0);
+      let newDay = request.resource.data.get(dayField, 0);
+      let newCount = request.resource.data.get(countField, 0);
+      return newDay == todayKey()
+        && newCount <= cap
+        && ((oldDay == todayKey() && newCount == oldCount + 1)
+            || (oldDay != todayKey() && newCount == 1));
+    }
+
+    // On a create: this batch also bumped the user's daily counter (validDaily enforces the cap).
+    function countedToday(dayField, countField) {
+      let before = get(userPath(request.auth.uid)).data;
+      let after = getAfter(userPath(request.auth.uid)).data;
+      return after.get(dayField, 0) == todayKey()
+        && (before.get(dayField, 0) != todayKey()
+            || after.get(countField, 0) == before.get(countField, 0) + 1);
+    }
+
+    function isBuilderAfter() {
+      return getAfter(userPath(request.auth.uid)).data.role in ['builder', 'both'];
+    }
+
+    // Public lists are paged: nobody can pull a whole collection in one request.
+    function smallPage() {
+      return request.query.limit != null && request.query.limit <= 50;
+    }
+
     // ---------- users ----------
 
     function validProfile(d) {
-      return d.keys().hasOnly(['name', 'photo', 'role', 'country', 'stack', 'link', 'lang', 'source',
-                               'lastIssueAt', 'lastSolutionAt', 'onboardedAt', 'createdAt'])
+      return d.keys().hasOnly(['name', 'photo', 'role', 'country', 'city', 'stack', 'link', 'lang', 'source',
+                               'lastIssueAt', 'lastSolutionAt', 'onboardedAt', 'createdAt',
+                               'issuesDay', 'issuesToday', 'solutionsDay', 'solutionsToday'])
         && str(d.name, 1, 60)
         && str(d.photo, 0, 500)
         && d.role in ['user', 'builder', 'both']
-        && str(d.country, 0, 60)
+        && validCountry(d.country)
+        && str(d.get('city', ''), 0, 60)
         && d.stack is list && d.stack.size() <= 10
         && str(d.link, 0, 200)
         && d.lang in ['en', 'el']
@@ -80,13 +124,17 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time
         && request.resource.data.onboardedAt == request.time
         && !('lastIssueAt' in request.resource.data)
-        && !('lastSolutionAt' in request.resource.data);
+        && !('lastSolutionAt' in request.resource.data)
+        && !request.resource.data.keys().hasAny(['issuesDay', 'issuesToday', 'solutionsDay', 'solutionsToday']);
       allow update: if isMe(uid)
         && validProfile(request.resource.data)
         && !changed().hasAny(['createdAt', 'onboardedAt', 'source'])
         // Cooldown stamps can only ever move to "now", never be backdated.
         && (!changed().hasAny(['lastIssueAt']) || request.resource.data.lastIssueAt == request.time)
-        && (!changed().hasAny(['lastSolutionAt']) || request.resource.data.lastSolutionAt == request.time);
+        && (!changed().hasAny(['lastSolutionAt']) || request.resource.data.lastSolutionAt == request.time)
+        // Max 5 problems and 3 solutions per UTC day.
+        && (!changed().hasAny(['issuesDay', 'issuesToday']) || validDaily('issuesDay', 'issuesToday', 5))
+        && (!changed().hasAny(['solutionsDay', 'solutionsToday']) || validDaily('solutionsDay', 'solutionsToday', 3));
       allow delete: if isMe(uid);
     }
 
@@ -100,16 +148,17 @@ service cloud.firestore {
       return str(d.title, 8, 120)
         && str(d.body, 0, 2000)
         && d.category in categories()
-        && d.platform in platforms()
+        && validPlace(d)
         && str(d.authorName, 1, 60)
         && str(d.authorPhoto, 0, 500);
     }
 
     match /issues/{issueId} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if smallPage();
 
       allow create: if onboarded()
-        && request.resource.data.keys().hasOnly(['title', 'body', 'category', 'platform', 'authorId',
+        && request.resource.data.keys().hasOnly(['title', 'body', 'category', 'country', 'city', 'authorId',
                                                  'authorName', 'authorPhoto', 'votes', 'builders',
                                                  'solutions', 'createdAt'])
         && validIssueContent(request.resource.data)
@@ -118,12 +167,13 @@ service cloud.firestore {
         && request.resource.data.builders == 0
         && request.resource.data.solutions == 0
         && request.resource.data.createdAt == request.time
-        && cooledDown('lastIssueAt', 10);
+        && cooledDown('lastIssueAt', 10)
+        && countedToday('issuesDay', 'issuesToday');
 
       allow update: if
         // Author edits content.
         (isMe(resource.data.authorId)
-          && changed().hasOnly(['title', 'body', 'category', 'platform', 'authorName', 'authorPhoto'])
+          && changed().hasOnly(['title', 'body', 'category', 'country', 'city', 'authorName', 'authorPhoto'])
           && validIssueContent(request.resource.data))
         // Vote / unvote, together with the vote doc.
         || (signedIn() && bumped('votes', 1)
@@ -166,7 +216,8 @@ service cloud.firestore {
 
       match /builders/{uid} {
         allow read: if isMe(uid);
-        allow create: if onboarded() && isMe(uid)
+        // Claiming is builder-only (the client flips a plain user to 'both' in the same batch).
+        allow create: if onboarded() && isMe(uid) && isBuilderAfter()
           && request.resource.data.keys().hasOnly(['uid', 'issueId', 'createdAt'])
           && request.resource.data.uid == uid
           && request.resource.data.issueId == issueId
@@ -190,7 +241,8 @@ service cloud.firestore {
     }
 
     match /solutions/{solutionId} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if smallPage();
 
       allow create: if onboarded()
         && solutionId == request.resource.data.issueId + '_' + request.auth.uid
@@ -203,7 +255,13 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/issues/$(request.resource.data.issueId))
         && getAfter(/databases/$(database)/documents/issues/$(request.resource.data.issueId)).data.solutions
            == get(/databases/$(database)/documents/issues/$(request.resource.data.issueId)).data.solutions + 1
-        && cooledDown('lastSolutionAt', 2);
+        && cooledDown('lastSolutionAt', 2)
+        && countedToday('solutionsDay', 'solutionsToday')
+        && isBuilderAfter()
+        // Claim first ("I'm building this"), then wait an hour: stops scripted drive-by submissions.
+        && exists(/databases/$(database)/documents/issues/$(request.resource.data.issueId)/builders/$(request.auth.uid))
+        && get(/databases/$(database)/documents/issues/$(request.resource.data.issueId)/builders/$(request.auth.uid)).data.createdAt
+           < request.time - duration.value(60, 'm');
 
       allow update: if
         (isMe(resource.data.authorId)

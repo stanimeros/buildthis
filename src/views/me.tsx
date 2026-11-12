@@ -6,14 +6,17 @@ import { Link, useNavigate } from '@/lib/nav'
 import { toast } from 'sonner'
 
 import { Avatar } from '@/components/avatar'
+import { useConfirm } from '@/components/confirm'
 import { Chips, Field } from '@/components/field'
 import { IssueCard } from '@/components/issue-card'
 import { Page } from '@/components/layout'
 import { Spinner } from '@/components/spinner'
 import { Button } from '@/components/ui/button'
+import { CountrySelect } from '@/components/place'
 import { Input } from '@/components/ui/input'
 import { currentLanguage } from '@/i18n'
 import { signOut, useAuth } from '@/lib/auth'
+import { isCountry } from '@/lib/countries'
 import { deleteAccount, updateProfile } from '@/lib/data'
 import { hostOf, timeAgo } from '@/lib/format'
 import { useMyIssues, useMySolutions, useVotedIssues } from '@/lib/hooks'
@@ -27,7 +30,9 @@ function ProfileForm({ profile }: { profile: Profile }) {
   const { t } = useTranslation()
   const [name, setName] = useState(profile.name)
   const [role, setRole] = useState(profile.role)
-  const [country, setCountry] = useState(profile.country)
+  // Older profiles stored free text here; only keep it if it's a country code.
+  const [country, setCountry] = useState(isCountry(profile.country) ? profile.country : '')
+  const [city, setCity] = useState(profile.city ?? '')
   const [stack, setStack] = useState(profile.stack)
   const [link, setLink] = useState(profile.link)
   const [saving, setSaving] = useState(false)
@@ -43,7 +48,8 @@ function ProfileForm({ profile }: { profile: Profile }) {
       await updateProfile({
         name: name.trim(),
         role,
-        country: country.trim(),
+        country,
+        city: city.trim(),
         stack: builder ? stack : [],
         link: builder ? link.trim() : '',
         lang: currentLanguage(),
@@ -65,9 +71,20 @@ function ProfileForm({ profile }: { profile: Profile }) {
       <Field label={t('me.role')}>
         <RolePicker value={role} onChange={setRole} />
       </Field>
-      <Field id="country" label={t('onboarding.country')}>
-        <Input id="country" value={country} maxLength={60} onChange={(e) => setCountry(e.target.value)} />
-      </Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field id="country" label={t('onboarding.country')}>
+          <CountrySelect id="country" value={country} onChange={setCountry} placeholder={t('place.chooseCountry')} />
+        </Field>
+        <Field id="city" label={t('onboarding.city')}>
+          <Input
+            id="city"
+            value={city}
+            maxLength={60}
+            placeholder={t('onboarding.cityPlaceholder')}
+            onChange={(e) => setCity(e.target.value)}
+          />
+        </Field>
+      </div>
       {builder && (
         <>
           <Field label={t('onboarding.stack')}>
@@ -145,7 +162,7 @@ function Lists({ uid }: { uid: string }) {
             {solutions.data.map((s) => (
               <li key={s.id}>
                 <Link
-                  to={`/issues/${s.issueId}`}
+                  to={`/p/${s.issueId}`}
                   className="flex items-center gap-4 rounded-3xl border bg-card p-4 transition hover:-translate-y-0.5"
                 >
                   <span className="w-20 shrink-0 text-center font-heading text-sm font-bold tabular-nums">
@@ -178,6 +195,7 @@ export function MePage() {
   const navigate = useNavigate()
   const { user, profile } = useAuth()
   const [deleting, setDeleting] = useState(false)
+  const [dialog, confirm] = useConfirm()
   if (!user || !profile) return <Spinner />
 
   async function out() {
@@ -194,7 +212,13 @@ export function MePage() {
       navigate('/signin?next=%2Fme')
       return
     }
-    if (!confirm(t('me.deleteConfirm'))) return
+    const ok = await confirm({
+      title: t('me.deleteConfirm'),
+      description: t('me.dangerBody'),
+      confirmLabel: t('me.danger'),
+      destructive: true,
+    })
+    if (!ok) return
     setDeleting(true)
     try {
       await deleteAccount()
@@ -209,6 +233,7 @@ export function MePage() {
 
   return (
     <Page>
+      {dialog}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Avatar name={profile.name} photo={profile.photo} className="size-16 text-2xl" />

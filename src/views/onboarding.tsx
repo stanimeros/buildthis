@@ -9,10 +9,12 @@ import { Chips, Field, FormCard } from '@/components/field'
 import { Page } from '@/components/layout'
 import { Spinner } from '@/components/spinner'
 import { Button } from '@/components/ui/button'
+import { CountrySelect } from '@/components/place'
 import { Input } from '@/components/ui/input'
 import { currentLanguage } from '@/i18n'
 import { useAuth } from '@/lib/auth'
 import { createProfile } from '@/lib/data'
+import { guessCountry } from '@/lib/countries'
 import { safeNext } from '@/lib/next'
 import { getSource } from '@/lib/source'
 import { type Role, stacks } from '@/lib/types'
@@ -66,7 +68,8 @@ export function OnboardingPage() {
   const [step, setStep] = useState<1 | 2>(1)
   const [role, setRole] = useState<Role | null>(null)
   const [name, setName] = useState(() => user?.displayName ?? user?.email?.split('@')[0] ?? '')
-  const [country, setCountry] = useState(currentLanguage() === 'el' ? 'Ελλάδα' : '')
+  const [country, setCountry] = useState(guessCountry)
+  const [city, setCity] = useState('')
   const [stack, setStack] = useState<string[]>([])
   const [link, setLink] = useState('')
   const [saving, setSaving] = useState(false)
@@ -88,7 +91,8 @@ export function OnboardingPage() {
         {
           name: name.trim(),
           role,
-          country: country.trim().slice(0, 60),
+          country,
+          city: city.trim().slice(0, 60),
           stack: builder ? stack : [],
           link: builder ? link.trim() : '',
           lang: currentLanguage(),
@@ -139,15 +143,25 @@ export function OnboardingPage() {
                 <Field id="name" label={t('onboarding.name')}>
                   <Input id="name" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} />
                 </Field>
-                <Field id="country" label={t('onboarding.country')}>
-                  <Input
-                    id="country"
-                    value={country}
-                    maxLength={60}
-                    placeholder={t('onboarding.countryPlaceholder')}
-                    onChange={(e) => setCountry(e.target.value)}
-                  />
-                </Field>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field id="country" label={t('onboarding.country')}>
+                    <CountrySelect
+                      id="country"
+                      value={country}
+                      onChange={setCountry}
+                      placeholder={t('place.chooseCountry')}
+                    />
+                  </Field>
+                  <Field id="city" label={t('onboarding.city')}>
+                    <Input
+                      id="city"
+                      value={city}
+                      maxLength={60}
+                      placeholder={t('onboarding.cityPlaceholder')}
+                      onChange={(e) => setCity(e.target.value)}
+                    />
+                  </Field>
+                </div>
                 {builder && (
                   <>
                     <Field label={t('onboarding.stack')}>

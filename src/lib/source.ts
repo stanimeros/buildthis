@@ -9,7 +9,7 @@ export function captureSource() {
     const source = utm || (ref && ref !== location.host ? ref : 'direct')
     localStorage.setItem(KEY, source.slice(0, 200))
   } catch {
-    // storage blocked — fall back to 'direct' at read time
+    // storage blocked: fall back to 'direct' at read time
   }
 }
 

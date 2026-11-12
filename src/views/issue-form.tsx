@@ -6,18 +6,19 @@ import { useNavigate, useParams } from '@/lib/nav'
 import { toast } from 'sonner'
 
 import { Chips, Field, FormCard } from '@/components/field'
+import { CountrySelect } from '@/components/place'
 import { Page } from '@/components/layout'
 import { Spinner } from '@/components/spinner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/lib/auth'
-import { inCooldown } from '@/lib/cooldown'
+import { inCooldown, LIMITS, usedToday } from '@/lib/quota'
 import { postIssue, updateIssue } from '@/lib/data'
 import { useIssue } from '@/lib/hooks'
-import { type Category, categories, limits, type Platform, platforms } from '@/lib/types'
+import { type Category, categories, type IssueInput, limits } from '@/lib/types'
 
-/** /new and /issues/:id/edit */
+/** /new and /p/:id/edit */
 export function IssueFormPage() {
   const { id } = useParams()
   const { issue, loading } = useIssue(id ?? '__none__')
@@ -30,7 +31,7 @@ function IssueForm({
   initial,
 }: {
   editId?: string
-  initial?: { title: string; body: string; category: Category; platform: Platform; authorId: string }
+  initial?: IssueInput & { authorId: string }
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -38,7 +39,10 @@ function IssueForm({
   const [title, setTitle] = useState(initial?.title ?? '')
   const [body, setBody] = useState(initial?.body ?? '')
   const [category, setCategory] = useState<Category>(initial?.category ?? 'productivity')
-  const [platform, setPlatform] = useState<Platform>(initial?.platform ?? 'any')
+  const [scoped, setScoped] = useState(!!initial?.country)
+  const [country, setCountry] = useState(initial?.country || profile?.country || '')
+  const [city, setCity] = useState(initial?.country ? initial.city : (profile?.city ?? ''))
+  const [countryError, setCountryError] = useState(false)
   const [sending, setSending] = useState(false)
   const [titleError, setTitleError] = useState(false)
 
@@ -46,19 +50,34 @@ function IssueForm({
   const forbidden = editing && (!initial || initial.authorId !== user?.uid)
 
   useEffect(() => {
-    if (forbidden) navigate(editId ? `/issues/${editId}` : '/issues', { replace: true })
+    if (forbidden) navigate(editId ? `/p/${editId}` : '/', { replace: true })
   }, [forbidden, editId, navigate])
 
   async function submit(e: FormEvent) {
     e.preventDefault()
-    const clean = { title: title.trim(), body: body.trim(), category, platform }
+    const clean: IssueInput = {
+      title: title.trim(),
+      body: body.trim(),
+      category,
+      country: scoped ? country : '',
+      city: scoped ? city.trim().slice(0, limits.city[1]) : '',
+    }
     const [min, max] = limits.issueTitle
     if (clean.title.length < min || clean.title.length > max) {
       setTitleError(true)
       return
     }
     setTitleError(false)
-    if (!editing && inCooldown(profile?.lastIssueAt, 10)) {
+    if (scoped && !country) {
+      setCountryError(true)
+      return
+    }
+    setCountryError(false)
+    if (!editing && profile && usedToday(profile, 'issues') >= LIMITS.issuesPerDay) {
+      toast.error(t('newIssue.dailyLimit'))
+      return
+    }
+    if (!editing && inCooldown(profile?.lastIssueAt, LIMITS.issueCooldownMin)) {
       toast.error(t('newIssue.cooldown'))
       return
     }
@@ -66,10 +85,10 @@ function IssueForm({
     try {
       if (editing) {
         await updateIssue(editId!, clean)
-        navigate(`/issues/${editId}`)
+        navigate(`/p/${editId}`)
       } else {
         const newId = await postIssue(profile!, clean)
-        navigate(`/issues/${newId}`)
+        navigate(`/p/${newId}`)
       }
     } catch (err) {
       console.error(err)
@@ -113,9 +132,36 @@ function IssueForm({
           <Field label={t('newIssue.fieldCategory')}>
             <Chips options={categories} value={category} onChange={setCategory} label={(c) => t(`categories.${c}`)} />
           </Field>
-          <Field label={t('newIssue.fieldPlatform')}>
-            <Chips options={platforms} value={platform} onChange={setPlatform} label={(p) => t(`platforms.${p}`)} />
+          <Field label={t('place.label')}>
+            <Chips
+              options={['anywhere', 'specific'] as const}
+              value={scoped ? 'specific' : 'anywhere'}
+              onChange={(v) => setScoped(v === 'specific')}
+              label={(v) => t(`place.${v}`)}
+            />
           </Field>
+          {scoped && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field id="country" label={t('place.country')} error={countryError ? t('place.countryRequired') : null}>
+                <CountrySelect
+                  id="country"
+                  value={country}
+                  onChange={setCountry}
+                  placeholder={t('place.chooseCountry')}
+                  invalid={countryError}
+                />
+              </Field>
+              <Field id="city" label={t('place.city')}>
+                <Input
+                  id="city"
+                  value={city}
+                  maxLength={limits.city[1]}
+                  placeholder={t('place.cityPlaceholder')}
+                  onChange={(e) => setCity(e.target.value)}
+                />
+              </Field>
+            </div>
+          )}
           <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}>
             <Button type="submit" size="lg" variant="flame" className="group w-full" disabled={sending}>
               {t(sending ? 'newIssue.submitting' : editing ? 'newIssue.save' : 'newIssue.submit')}

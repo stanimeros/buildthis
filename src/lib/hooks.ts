@@ -1,6 +1,6 @@
 import {
   collection, doc, documentId, getDocs, limit, onSnapshot, orderBy, query, type QueryConstraint,
-  where,
+  type Timestamp, where,
 } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
 
@@ -51,11 +51,13 @@ function useQuery<T>(key: string, build: () => QueryConstraint[] | null, path: s
   return state.key === key ? state : { data: fallback, loading: true, error: null }
 }
 
-export function useIssues(sort: Sort, category: Category | 'all', max = 50) {
+/** `country`: '' = everywhere; a code = problems in that country plus "anywhere" ones. */
+export function useIssues(sort: Sort, category: Category | 'all', country = '', max = 50) {
   return useQuery<Issue>(
-    `issues:${sort}:${category}:${max}`,
+    `issues:${sort}:${category}:${country}:${max}`,
     () => [
       ...(category === 'all' ? [] : [where('category', '==', category)]),
+      ...(country ? [where('country', 'in', [country, ''])] : []),
       orderBy(sort === 'top' ? 'votes' : 'createdAt', 'desc'),
       limit(max),
     ],
@@ -67,7 +69,7 @@ export function useIssues(sort: Sort, category: Category | 'all', max = 50) {
 export function useMyIssues(uid: string | undefined) {
   return useQuery<Issue>(
     `my-issues:${uid}`,
-    () => (uid ? [where('authorId', '==', uid), orderBy('createdAt', 'desc')] : null),
+    () => (uid ? [where('authorId', '==', uid), orderBy('createdAt', 'desc'), limit(50)] : null),
     'issues',
     [],
   )
@@ -76,7 +78,7 @@ export function useMyIssues(uid: string | undefined) {
 export function useSolutions(issueId: string) {
   return useQuery<Solution>(
     `solutions:${issueId}`,
-    () => [where('issueId', '==', issueId), orderBy('votes', 'desc')],
+    () => [where('issueId', '==', issueId), orderBy('votes', 'desc'), limit(50)],
     'solutions',
     [],
   )
@@ -85,7 +87,7 @@ export function useSolutions(issueId: string) {
 export function useMySolutions(uid: string | undefined) {
   return useQuery<Solution>(
     `my-solutions:${uid}`,
-    () => (uid ? [where('authorId', '==', uid), orderBy('createdAt', 'desc')] : null),
+    () => (uid ? [where('authorId', '==', uid), orderBy('createdAt', 'desc'), limit(50)] : null),
     'solutions',
     [],
   )
@@ -110,19 +112,26 @@ export function useIssue(id: string) {
   return state.id === id ? state : { issue: null, loading: true }
 }
 
-/** Whether the current user has claimed "I'm building this" on an issue. */
-export function useBuilding(issueId: string) {
+/** The current user's "I'm building this" claim time: undefined = loading, null = not claimed. */
+export function useClaim(issueId: string) {
   const { user } = useAuth()
-  const [building, setBuilding] = useState(false)
+  const [claim, setClaim] = useState<{ key: string; at: Timestamp | null } | null>(null)
+  const key = `${issueId}:${user?.uid}`
   useEffect(() => {
     if (!user) return
     return onSnapshot(
       doc(db, 'issues', issueId, 'builders', user.uid),
-      (snap) => setBuilding(snap.exists()),
-      () => setBuilding(false),
+      // Pending local writes have no server time yet: estimate it.
+      (snap) =>
+        setClaim({
+          key,
+          at: snap.exists() ? (snap.get('createdAt', { serverTimestamps: 'estimate' }) as Timestamp) : null,
+        }),
+      () => setClaim({ key, at: null }),
     )
-  }, [issueId, user])
-  return !!user && building
+  }, [issueId, user, key])
+  if (!user) return null
+  return claim?.key === key ? claim.at : undefined
 }
 
 /** Issues the current user voted on (for /me), fetched by id in chunks of 30. */
@@ -138,7 +147,7 @@ export function useVotedIssues() {
     const chunks: string[][] = []
     for (let i = 0; i < list.length; i += 30) chunks.push(list.slice(i, i + 30))
     let cancelled = false
-    Promise.all(chunks.map((c) => getDocs(query(collection(db, 'issues'), where(documentId(), 'in', c)))))
+    Promise.all(chunks.map((c) => getDocs(query(collection(db, 'issues'), where(documentId(), 'in', c), limit(30)))))
       .then((snaps) => {
         if (cancelled) return
         const data = snaps.flatMap((s) => s.docs.map((d) => ({ id: d.id, ...d.data() }) as Issue))

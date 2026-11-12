@@ -3,7 +3,6 @@
 import { type AnchorHTMLAttributes, useEffect, useMemo, useSyncExternalStore } from 'react'
 
 import { Spinner } from '@/components/spinner'
-import { cn } from '@/lib/utils'
 
 const listeners = new Set<() => void>()
 const emit = () => listeners.forEach((l) => l())
@@ -34,10 +33,10 @@ export function useLocation() {
   return { pathname, search }
 }
 
-/** `/issues/:id[/edit|/submit]` → { id } */
+/** `/p/:id[/edit|/submit]` → { id } */
 export function useParams(): { id?: string } {
   const { pathname } = useLocation()
-  const match = pathname.match(/^\/issues\/([^/]+)/)
+  const match = pathname.match(/^\/p\/([^/]+)/)
   return { id: match ? decodeURIComponent(match[1]) : undefined }
 }
 
@@ -56,16 +55,6 @@ type LinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & { to: s
 
 export function Link({ to, ...props }: LinkProps) {
   return <a href={to} {...props} />
-}
-
-export function NavLink({
-  to,
-  className,
-  ...props
-}: Omit<LinkProps, 'className'> & { className: (s: { isActive: boolean }) => string }) {
-  const { pathname } = useLocation()
-  const isActive = pathname === to || pathname.startsWith(`${to}/`)
-  return <a href={to} aria-current={isActive ? 'page' : undefined} className={cn(className({ isActive }))} {...props} />
 }
 
 export function Navigate({ to, replace }: { to: string; replace?: boolean }) {
