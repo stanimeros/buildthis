@@ -1,5 +1,6 @@
 import { ClockIcon, FireIcon, PlusIcon } from '@phosphor-icons/react'
 import { motion } from 'motion/react'
+import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { categoryIcons } from '@/components/badges'
@@ -8,7 +9,7 @@ import { IssueCard } from '@/components/issue-card'
 import { CountrySelect } from '@/components/place'
 import { Spinner } from '@/components/spinner'
 import { Button } from '@/components/ui/button'
-import { type Sort, useIssues } from '@/lib/hooks'
+import { type Sort, useIssueFeed } from '@/lib/hooks'
 import { isCountry } from '@/lib/countries'
 import { Link, useSearchParams } from '@/lib/nav'
 import { type Category, categories } from '@/lib/types'
@@ -23,7 +24,17 @@ export function Board() {
   const category: Category | 'all' = categories.includes(rawCat as Category) ? (rawCat as Category) : 'all'
   const rawCountry = params.get('country') ?? ''
   const country = isCountry(rawCountry) ? rawCountry : ''
-  const { data, loading, error } = useIssues(sort, category, country)
+  const { data, loading, error, hasMore, loadingMore, loadMore } = useIssueFeed(sort, category, country)
+
+  // Infinite scroll: load the next page when the sentinel under the list comes into view.
+  const sentinel = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = sentinel.current
+    if (!el || !hasMore || loadingMore) return
+    const io = new IntersectionObserver((entries) => entries[0].isIntersecting && loadMore(), { rootMargin: '400px' })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [hasMore, loadingMore, loadMore])
 
   function set(key: string, value: string | null) {
     const next = new URLSearchParams(params)
@@ -117,11 +128,24 @@ export function Board() {
             </Button>
           </div>
         ) : (
-          <ul className="space-y-3">
-            {data.map((issue, i) => (
-              <IssueCard key={issue.id} issue={issue} index={i} />
-            ))}
-          </ul>
+          <>
+            <ul className="space-y-3">
+              {data.map((issue, i) => (
+                <IssueCard key={issue.id} issue={issue} index={i % 50} />
+              ))}
+            </ul>
+            <div ref={sentinel} className="mt-6 flex justify-center">
+              {loadingMore ? (
+                <Spinner />
+              ) : (
+                hasMore && (
+                  <Button variant="outline" onClick={loadMore}>
+                    {t('issues.loadMore')}
+                  </Button>
+                )
+              )}
+            </div>
+          </>
         )}
       </div>
     </section>

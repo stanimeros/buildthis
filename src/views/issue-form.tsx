@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from '@/lib/nav'
 import { toast } from 'sonner'
 
+import { BlockedNotice } from '@/components/blocked-notice'
 import { Chips, Field, FormCard } from '@/components/field'
 import { CountrySelect } from '@/components/place'
 import { Page } from '@/components/layout'
@@ -22,6 +23,8 @@ import { type Category, categories, type IssueInput, limits } from '@/lib/types'
 export function IssueFormPage() {
   const { id } = useParams()
   const { issue, loading } = useIssue(id ?? '__none__')
+  const { blocked } = useAuth()
+  if (blocked) return <BlockedNotice />
   if (id && loading) return <Spinner />
   return <IssueForm key={issue?.id ?? 'new'} editId={id} initial={issue ?? undefined} />
 }

@@ -88,7 +88,8 @@
     "empty": "No problems here yet.",
     "emptyCta": "Be the first to post one",
     "upvote": "Upvote",
-    "removeVote": "Remove vote"
+    "removeVote": "Remove vote",
+    "loadMore": "Load more"
   },
   "issue": {
     "notFound": "This problem doesn't exist (or was removed).",
@@ -219,5 +220,19 @@
     "countryRequired": "Choose a country, or pick Anywhere.",
     "search": "Search countries…",
     "noMatch": "No country found."
+  },
+  "report": {
+    "action": "Report",
+    "done": "Reported",
+    "confirm": "Report",
+    "confirmTitle": "Report as inappropriate?",
+    "confirmBody": "If enough people report it, it's hidden until we review it.",
+    "thanks": "Thanks. We'll take a look.",
+    "hiddenNotice": "This was hidden after reports from other users. We'll review it soon.",
+    "hiddenBadge": "Hidden"
+  },
+  "blocked": {
+    "title": "Your account is read-only",
+    "body": "Several of your posts were hidden after reports from other users, so you can't post, vote or report any more."
   }
 }

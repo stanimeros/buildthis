@@ -105,6 +105,7 @@ for (const [i, p] of problems.entries()) {
     votes: { integerValue: '0' },
     builders: { integerValue: '0' },
     solutions: { integerValue: '0' },
+    hidden: { booleanValue: false },
     createdAt: { timestampValue: createdAt },
   }
   const res = await fetch(`${base}/issues/seed-${String(i + 1).padStart(2, '0')}`, {

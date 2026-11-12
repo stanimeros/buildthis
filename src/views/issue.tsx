@@ -1,5 +1,5 @@
 import {
-  ArrowLeftIcon, ArrowSquareOutIcon, CheckIcon, HammerIcon, PencilSimpleIcon,
+  ArrowLeftIcon, ArrowSquareOutIcon, CheckIcon, EyeSlashIcon, HammerIcon, PencilSimpleIcon,
   PlusIcon, ShareNetworkIcon, TrashIcon,
 } from '@phosphor-icons/react'
 import { AnimatePresence, motion } from 'motion/react'
@@ -9,6 +9,7 @@ import { Link, useNavigate, useParams } from '@/lib/nav'
 import { toast } from 'sonner'
 
 import { Avatar } from '@/components/avatar'
+import { ReportButton } from '@/components/report-button'
 import { useConfirm } from '@/components/confirm'
 import { CategoryBadge, PlaceBadge } from '@/components/badges'
 import { useRequireSignIn } from '@/components/require-auth'
@@ -26,7 +27,7 @@ import { cn } from '@/lib/utils'
 
 function BuildButton({ issue }: { issue: Issue }) {
   const { t } = useTranslation()
-  const { user, profile } = useAuth()
+  const { user, profile, blocked } = useAuth()
   const claim = useClaim(issue.id)
   const building = !!claim
   const requireSignIn = useRequireSignIn()
@@ -35,6 +36,7 @@ function BuildButton({ issue }: { issue: Issue }) {
 
   async function click() {
     if (!user) return requireSignIn()
+    if (blocked) return toast.error(t('blocked.title'))
     if (!profile) return navigate(`/onboarding?next=${encodeURIComponent(`/p/${issue.id}`)}`)
     setPending(true)
     try {
@@ -143,6 +145,7 @@ function SolutionItem({ solution, index }: { solution: Solution; index: number }
               <TrashIcon /> {t('issue.delete')}
             </button>
           )}
+          {!mine && <ReportButton coll="solutions" id={solution.id} authorId={solution.authorId} compact />}
         </div>
       </div>
     </motion.li>
@@ -207,6 +210,13 @@ export function IssuePage() {
         <ArrowLeftIcon weight="bold" /> {t('issue.back')}
       </Link>
 
+      {issue.hidden && (
+        <div className="mt-6 flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
+          <EyeSlashIcon weight="duotone" className="mt-0.5 size-5 shrink-0 text-destructive" />
+          <p>{t('report.hiddenNotice')}</p>
+        </div>
+      )}
+
       <motion.article
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -257,6 +267,7 @@ export function IssuePage() {
               </Link>
             </Button>
           )}
+          {!mine && <ReportButton coll="issues" id={issue.id} authorId={issue.authorId} />}
           {isAdmin && (
             <Button size="lg" variant="destructive" onClick={adminDelete}>
               <TrashIcon weight="bold" />

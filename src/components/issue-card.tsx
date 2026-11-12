@@ -1,9 +1,9 @@
-import { HammerIcon, PuzzlePieceIcon } from '@phosphor-icons/react'
+import { EyeSlashIcon, HammerIcon, PuzzlePieceIcon } from '@phosphor-icons/react'
 import { motion } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 
 import { Avatar } from '@/components/avatar'
-import { CategoryBadge, PlaceBadge } from '@/components/badges'
+import { Badge, CategoryBadge, PlaceBadge } from '@/components/badges'
 import { VoteButton } from '@/components/vote-button'
 import { useAuth } from '@/lib/auth'
 import { toggleIssueVote } from '@/lib/data'
@@ -34,6 +34,11 @@ export function IssueCard({ issue, index = 0 }: { issue: Issue; index?: number }
         <div className="min-w-0 flex-1 py-0.5">
           <p className="leading-snug font-semibold break-words group-hover:text-primary sm:text-lg">{issue.title}</p>
           <div className="mt-2 flex flex-wrap gap-1.5">
+            {issue.hidden && (
+              <Badge icon={<EyeSlashIcon weight="bold" />} className="bg-destructive/10 text-destructive">
+                {t('report.hiddenBadge')}
+              </Badge>
+            )}
             <CategoryBadge category={issue.category} />
             <PlaceBadge country={issue.country} />
           </div>

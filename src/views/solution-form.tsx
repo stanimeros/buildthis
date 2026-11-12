@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from '@/lib/nav'
 import { toast } from 'sonner'
 
+import { BlockedNotice } from '@/components/blocked-notice'
 import { Field, FormCard } from '@/components/field'
 import { Page } from '@/components/layout'
 import { Spinner } from '@/components/spinner'
@@ -25,7 +26,7 @@ const URL_RE = /^https:\/\/[^\s]+\.[^\s]+$/
 /** /p/:id/submit: creates, or edits if the user already submitted one. */
 export function SolutionFormPage() {
   const { id = '' } = useParams()
-  const { user } = useAuth()
+  const { user, blocked } = useAuth()
   const { issue, loading } = useIssue(id)
   const claim = useClaim(id)
   const [existing, setExisting] = useState<{ id: string; data: Solution | null } | null>(null)
@@ -38,6 +39,7 @@ export function SolutionFormPage() {
       .catch(() => setExisting({ id: sid, data: null }))
   }, [id, user])
 
+  if (blocked) return <BlockedNotice />
   if (loading || !existing || claim === undefined) return <Spinner />
   if (!issue) return <NotFoundPage />
   // New submissions need a claim at least an hour old (enforced by the rules too).

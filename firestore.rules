@@ -13,6 +13,11 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    // Signed in and not blocked by strikes (see moderation). Every action needs this.
+    function active() {
+      return signedIn() && inGoodStanding();
+    }
+
     function isAdmin() {
       return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
@@ -111,6 +116,91 @@ service cloud.firestore {
       return d.authorName == profile.name && d.authorPhoto == profile.photo;
     }
 
+    // ---------- moderation ----------
+    // Reports live in `{doc}/reports/{uid}` (one per user, readable only by the reporter) and a
+    // private counter in `{doc}/meta/moderation` (admins only). With REPORT_LIMIT distinct reports the
+    // doc must become hidden in the same batch. Nobody else ever sees how many reports there are.
+
+    function reportLimit() {
+      return 3;
+    }
+
+    // Visible to everyone, or hidden but you're the author / an admin.
+    function canSee(d) {
+      return d.get('hidden', false) == false || isAdmin() || (signedIn() && d.authorId == request.auth.uid);
+    }
+
+    // Lists: the query itself must filter `hidden == false` (or only ask for your own posts).
+    function canList(d) {
+      return d.hidden == false || (signedIn() && d.authorId == request.auth.uid) || isAdmin();
+    }
+
+    // A report batch: own report doc created now, counter +1, and hidden once the limit is reached.
+    function validReport(coll, id, uid) {
+      let metaPath = /databases/$(database)/documents/$(coll)/$(id)/meta/moderation;
+      let before = exists(metaPath) ? get(metaPath).data.get('reports', 0) : 0;
+      let after = getAfter(metaPath).data.get('reports', 0);
+      let parentAfter = getAfter(/databases/$(database)/documents/$(coll)/$(id)).data;
+      return isMe(uid)
+        && inGoodStanding()
+        && request.resource.data.keys().hasOnly(['uid', 'createdAt'])
+        && request.resource.data.uid == uid
+        && request.resource.data.createdAt == request.time
+        && after == before + 1
+        && (after < reportLimit() || parentAfter.hidden == true);
+    }
+
+    // The counter doc: only ever +1 by a reporter (with their report doc), or reset by an admin.
+    function validModerationWrite(coll, id) {
+      let reportPath = /databases/$(database)/documents/$(coll)/$(id)/reports/$(request.auth.uid);
+      return request.resource.data.keys().hasOnly(['reports'])
+        && request.resource.data.reports is int
+        && (isAdmin()
+            || (signedIn() && !exists(reportPath) && existsAfter(reportPath)
+                && request.resource.data.reports == (resource == null ? 0 : resource.data.get('reports', 0)) + 1));
+    }
+
+    // Hiding happens only in a report batch that reaches the limit, and gives the author a strike.
+    // Un-hiding is admin-only (Firebase console).
+    function hideByReports(coll, id) {
+      let metaPath = /databases/$(database)/documents/$(coll)/$(id)/meta/moderation;
+      return active() && changed().hasOnly(['hidden'])
+        && request.resource.data.hidden == true
+        && existsAfter(/databases/$(database)/documents/$(coll)/$(id)/reports/$(request.auth.uid))
+        && getAfter(metaPath).data.get('reports', 0) >= reportLimit()
+        && getAfter(strikesPath(resource.data.authorId)).data.get('lastId', '') == id;
+    }
+
+    // Strikes: how many of a user's posts were hidden by reports. Private to that user.
+    // With strikeLimit() strikes they can't post, claim or report any more (voting still works).
+    function deletedAuthor() {
+      return isMe(resource.data.authorId)
+        && changed().hasOnly(['authorName', 'authorPhoto'])
+        && request.resource.data.authorName == 'Deleted user'
+        && request.resource.data.authorPhoto == '';
+    }
+
+    function strikeLimit() {
+      return 2;
+    }
+
+    function strikesPath(uid) {
+      return /databases/$(database)/documents/strikes/$(uid);
+    }
+
+    function inGoodStanding() {
+      return !exists(strikesPath(request.auth.uid))
+        || get(strikesPath(request.auth.uid)).data.count < strikeLimit();
+    }
+
+    // The strike's target was visible before this batch, is hidden after it, and is by this user.
+    function strikeTargetJustHidden(coll, id, uid) {
+      let path = /databases/$(database)/documents/$(coll)/$(id);
+      return get(path).data.get('hidden', false) == false
+        && getAfter(path).data.hidden == true
+        && getAfter(path).data.authorId == uid;
+    }
+
     // ---------- users ----------
 
     function validProfile(d) {
@@ -158,6 +248,15 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /strikes/{uid} {
+      allow read: if isMe(uid);
+      allow create, update: if active()
+        && request.resource.data.keys().hasOnly(['count', 'lastColl', 'lastId'])
+        && request.resource.data.count == (resource == null ? 0 : resource.data.count) + 1
+        && request.resource.data.lastColl in ['issues', 'solutions']
+        && strikeTargetJustHidden(request.resource.data.lastColl, request.resource.data.lastId, uid);
+    }
+
     match /admins/{uid} {
       allow read: if isMe(uid);
     }
@@ -174,15 +273,17 @@ service cloud.firestore {
     }
 
     match /issues/{issueId} {
-      allow get: if true;
-      allow list: if smallPage();
+      allow get: if canSee(resource.data);
+      // Queries must filter `hidden == false`, unless they only fetch your own (or you're an admin).
+      allow list: if smallPage() && canList(resource.data);
 
-      allow create: if onboarded()
+      allow create: if onboarded() && inGoodStanding()
         // Auto ids only: recreating a deleted issue's id would revive its old vote docs.
         && issueId.matches('^[A-Za-z0-9]{20}$')
         && request.resource.data.keys().hasOnly(['title', 'body', 'category', 'country', 'authorId',
                                                  'authorName', 'authorPhoto', 'votes', 'builders',
-                                                 'solutions', 'createdAt'])
+                                                 'solutions', 'hidden', 'createdAt'])
+        && request.resource.data.hidden == false
         && validIssueContent(request.resource.data)
         && authorMatchesProfile(request.resource.data)
         && request.resource.data.authorId == request.auth.uid
@@ -196,48 +297,63 @@ service cloud.firestore {
         && getAfter(userPath(request.auth.uid)).data.get('lastIssueId', '') == issueId;
 
       allow update: if
-        // Author edits content.
-        (isMe(resource.data.authorId)
-          && changed().hasOnly(['title', 'body', 'category', 'country', 'authorName', 'authorPhoto'])
-          && validIssueContent(request.resource.data)
-          && authorMatchesProfile(request.resource.data))
         // Vote / unvote, together with the vote doc.
-        || (signedIn() && bumped('votes', 1)
+        (active() && bumped('votes', 1)
           && !exists(/databases/$(database)/documents/issues/$(issueId)/votes/$(request.auth.uid))
           && existsAfter(/databases/$(database)/documents/issues/$(issueId)/votes/$(request.auth.uid)))
-        || (signedIn() && bumped('votes', -1)
+        || (active() && bumped('votes', -1)
           && exists(/databases/$(database)/documents/issues/$(issueId)/votes/$(request.auth.uid))
           && !existsAfter(/databases/$(database)/documents/issues/$(issueId)/votes/$(request.auth.uid)))
         // "I'm building this" / un-claim.
-        || (signedIn() && bumped('builders', 1)
+        || (active() && bumped('builders', 1)
           && !exists(/databases/$(database)/documents/issues/$(issueId)/builders/$(request.auth.uid))
           && existsAfter(/databases/$(database)/documents/issues/$(issueId)/builders/$(request.auth.uid)))
         || (signedIn() && bumped('builders', -1)
           && exists(/databases/$(database)/documents/issues/$(issueId)/builders/$(request.auth.uid))
           && !existsAfter(/databases/$(database)/documents/issues/$(issueId)/builders/$(request.auth.uid)))
         // Solution submitted / removed (solution id is `${issueId}_${uid}`).
-        || (signedIn() && bumped('solutions', 1)
+        || (active() && bumped('solutions', 1)
           && !exists(/databases/$(database)/documents/solutions/$(issueId + '_' + request.auth.uid))
           && existsAfter(/databases/$(database)/documents/solutions/$(issueId + '_' + request.auth.uid)))
-        || (signedIn() && bumped('solutions', -1)
+        || (active() && bumped('solutions', -1)
           && exists(/databases/$(database)/documents/solutions/$(issueId + '_' + request.auth.uid))
           && !existsAfter(/databases/$(database)/documents/solutions/$(issueId + '_' + request.auth.uid)))
         // Admin removing someone's solution keeps the counter right.
-        || (isAdmin() && bumped('solutions', -1));
+        || (isAdmin() && bumped('solutions', -1))
+        // Author edits content.
+        || (isMe(resource.data.authorId) && inGoodStanding()
+          && changed().hasOnly(['title', 'body', 'category', 'country', 'authorName', 'authorPhoto'])
+          && validIssueContent(request.resource.data)
+          && authorMatchesProfile(request.resource.data))
+        // Account deletion relabels authored content (allowed even when blocked).
+        || deletedAuthor()
+        // Moderation.
+        || hideByReports('issues', issueId)
+        || (isAdmin() && changed().hasOnly(['hidden']));
 
       allow delete: if isAdmin();
+
+      match /reports/{uid} {
+        allow read: if isMe(uid) || isAdmin();
+        allow create: if validReport('issues', issueId, uid);
+      }
+
+      match /meta/{docId} {
+        allow read: if isAdmin();
+        allow create, update: if docId == 'moderation' && validModerationWrite('issues', issueId);
+      }
 
       // Vote / builder docs are keyed by uid: one per user. The counter must move in the same batch.
       match /votes/{uid} {
         allow read: if isMe(uid);
-        allow create: if isMe(uid)
+        allow create: if isMe(uid) && inGoodStanding()
           && request.resource.data.keys().hasOnly(['uid', 'issueId', 'createdAt'])
           && request.resource.data.uid == uid
           && request.resource.data.issueId == issueId
           && request.resource.data.createdAt == request.time
           && getAfter(/databases/$(database)/documents/issues/$(issueId)).data.votes
              == get(/databases/$(database)/documents/issues/$(issueId)).data.votes + 1;
-        allow delete: if isMe(uid)
+        allow delete: if isMe(uid) && inGoodStanding()
           && getAfter(/databases/$(database)/documents/issues/$(issueId)).data.votes
              == get(/databases/$(database)/documents/issues/$(issueId)).data.votes - 1;
       }
@@ -245,7 +361,7 @@ service cloud.firestore {
       match /builders/{uid} {
         allow read: if isMe(uid);
         // Claiming is builder-only (the client flips a plain user to 'both' in the same batch).
-        allow create: if onboarded() && isMe(uid) && isBuilderAfter()
+        allow create: if onboarded() && isMe(uid) && isBuilderAfter() && inGoodStanding()
           && request.resource.data.keys().hasOnly(['uid', 'issueId', 'createdAt'])
           && request.resource.data.uid == uid
           && request.resource.data.issueId == issueId
@@ -269,13 +385,14 @@ service cloud.firestore {
     }
 
     match /solutions/{solutionId} {
-      allow get: if true;
-      allow list: if smallPage();
+      allow get: if canSee(resource.data);
+      allow list: if smallPage() && canList(resource.data);
 
-      allow create: if onboarded()
+      allow create: if onboarded() && inGoodStanding()
         && solutionId == request.resource.data.issueId + '_' + request.auth.uid
         && request.resource.data.keys().hasOnly(['issueId', 'title', 'url', 'body', 'authorId',
-                                                 'authorName', 'authorPhoto', 'votes', 'createdAt'])
+                                                 'authorName', 'authorPhoto', 'votes', 'hidden', 'createdAt'])
+        && request.resource.data.hidden == false
         && validSolutionContent(request.resource.data)
         && authorMatchesProfile(request.resource.data)
         && request.resource.data.authorId == request.auth.uid
@@ -295,34 +412,48 @@ service cloud.firestore {
            < request.time - duration.value(60, 'm');
 
       allow update: if
-        (isMe(resource.data.authorId)
+        (isMe(resource.data.authorId) && inGoodStanding()
           && changed().hasOnly(['title', 'url', 'body', 'authorName', 'authorPhoto'])
           && validSolutionContent(request.resource.data)
           && authorMatchesProfile(request.resource.data))
-        || (signedIn() && bumped('votes', 1)
+        || (active() && bumped('votes', 1)
           && !exists(/databases/$(database)/documents/solutions/$(solutionId)/votes/$(request.auth.uid))
           && existsAfter(/databases/$(database)/documents/solutions/$(solutionId)/votes/$(request.auth.uid)))
-        || (signedIn() && bumped('votes', -1)
+        || (active() && bumped('votes', -1)
           && exists(/databases/$(database)/documents/solutions/$(solutionId)/votes/$(request.auth.uid))
-          && !existsAfter(/databases/$(database)/documents/solutions/$(solutionId)/votes/$(request.auth.uid)));
+          && !existsAfter(/databases/$(database)/documents/solutions/$(solutionId)/votes/$(request.auth.uid)))
+        || deletedAuthor()
+        // Moderation.
+        || hideByReports('solutions', solutionId)
+        || (isAdmin() && changed().hasOnly(['hidden']));
 
       // Author or admin removes a solution; the issue counter goes down in the same batch
       // (or the issue itself is already gone).
-      allow delete: if (isMe(resource.data.authorId) || isAdmin())
+      allow delete: if ((isMe(resource.data.authorId) && inGoodStanding()) || isAdmin())
         && (!exists(/databases/$(database)/documents/issues/$(resource.data.issueId))
             || getAfter(/databases/$(database)/documents/issues/$(resource.data.issueId)).data.solutions
                == get(/databases/$(database)/documents/issues/$(resource.data.issueId)).data.solutions - 1);
 
+      match /reports/{uid} {
+        allow read: if isMe(uid) || isAdmin();
+        allow create: if validReport('solutions', solutionId, uid);
+      }
+
+      match /meta/{docId} {
+        allow read: if isAdmin();
+        allow create, update: if docId == 'moderation' && validModerationWrite('solutions', solutionId);
+      }
+
       match /votes/{uid} {
         allow read: if isMe(uid);
-        allow create: if isMe(uid)
+        allow create: if isMe(uid) && inGoodStanding()
           && request.resource.data.keys().hasOnly(['uid', 'solutionId', 'createdAt'])
           && request.resource.data.uid == uid
           && request.resource.data.solutionId == solutionId
           && request.resource.data.createdAt == request.time
           && getAfter(/databases/$(database)/documents/solutions/$(solutionId)).data.votes
              == get(/databases/$(database)/documents/solutions/$(solutionId)).data.votes + 1;
-        allow delete: if isMe(uid)
+        allow delete: if isMe(uid) && inGoodStanding()
           && getAfter(/databases/$(database)/documents/solutions/$(solutionId)).data.votes
              == get(/databases/$(database)/documents/solutions/$(solutionId)).data.votes - 1;
       }

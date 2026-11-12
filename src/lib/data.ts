@@ -64,6 +64,7 @@ export async function postIssue(
     votes: 0,
     builders: 0,
     solutions: 0,
+    hidden: false,
     createdAt: serverTimestamp(),
   })
   batch.update(doc(db, 'users', user.uid), {
@@ -124,6 +125,7 @@ export async function submitSolution(
     authorName: profile.name,
     authorPhoto: profile.photo,
     votes: 0,
+    hidden: false,
     createdAt: serverTimestamp(),
   })
   batch.update(doc(db, 'issues', issueId), { solutions: increment(1) })
@@ -160,6 +162,35 @@ export async function toggleSolutionVote(id: string, voted: boolean) {
 
 export async function adminDeleteIssue(id: string) {
   await deleteDoc(doc(db, 'issues', id))
+}
+
+export type Reportable = 'issues' | 'solutions'
+
+/**
+ * Report as inappropriate: one report per user. The count is private (admins only); when it reaches
+ * the limit in firestore.rules the same batch must hide the doc and give its author a strike. We can't read the count, so try
+ * without hiding first and, if the rules say this report reaches the limit, again with hiding.
+ */
+export async function report(coll: Reportable, id: string, authorId: string) {
+  const uid = me().uid
+  const attempt = (hide: boolean) => {
+    const batch = writeBatch(db)
+    batch.set(doc(db, coll, id, 'reports', uid), { uid, createdAt: serverTimestamp() })
+    batch.set(doc(db, coll, id, 'meta', 'moderation'), { reports: increment(1) }, { merge: true })
+    if (hide) {
+      batch.update(doc(db, coll, id), { hidden: true })
+      // A hidden post is a strike for its author; at the limit they're blocked from every action.
+      batch.set(doc(db, 'strikes', authorId), { count: increment(1), lastColl: coll, lastId: id }, { merge: true })
+    }
+    return batch.commit()
+  }
+  try {
+    await attempt(false)
+  } catch (err) {
+    if ((err as { code?: string }).code !== 'permission-denied') throw err
+    await attempt(true)
+  }
+  track('report', { target: coll })
 }
 
 const DELETED = 'Deleted user'

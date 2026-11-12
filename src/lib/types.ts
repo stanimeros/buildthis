@@ -45,6 +45,8 @@ export interface Issue {
   votes: number
   builders: number
   solutions: number
+  /** hidden after enough reports (see firestore.rules → moderation) */
+  hidden?: boolean
   createdAt: Timestamp | null
 }
 
@@ -67,6 +69,7 @@ export interface Solution {
   authorName: string
   authorPhoto: string
   votes: number
+  hidden?: boolean
   createdAt: Timestamp | null
 }
 

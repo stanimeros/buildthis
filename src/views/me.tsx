@@ -6,6 +6,7 @@ import { Link, useNavigate } from '@/lib/nav'
 import { toast } from 'sonner'
 
 import { Avatar } from '@/components/avatar'
+import { BlockedNotice } from '@/components/blocked-notice'
 import { useConfirm } from '@/components/confirm'
 import { Chips, Field } from '@/components/field'
 import { IssueCard } from '@/components/issue-card'
@@ -180,7 +181,7 @@ function Lists({ uid }: { uid: string }) {
 export function MePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { user, profile } = useAuth()
+  const { user, profile, blocked } = useAuth()
   const [deleting, setDeleting] = useState(false)
   const [dialog, confirm] = useConfirm()
   if (!user || !profile) return <Spinner />
@@ -216,6 +217,11 @@ export function MePage() {
   return (
     <Page>
       {dialog}
+      {blocked && (
+        <div className="-mt-12 mb-8">
+          <BlockedNotice />
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Avatar name={profile.name} photo={profile.photo} className="size-16 text-2xl" />

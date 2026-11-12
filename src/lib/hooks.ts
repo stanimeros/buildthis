@@ -1,6 +1,6 @@
 import {
   collection, doc, documentId, getDocs, limit, onSnapshot, orderBy, query, type QueryConstraint,
-  type Timestamp, where,
+  type QueryDocumentSnapshot, startAfter, type Timestamp, where,
 } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
 
@@ -51,21 +51,81 @@ function useQuery<T>(key: string, build: () => QueryConstraint[] | null, path: s
   return state.key === key ? state : { data: fallback, loading: true, error: null }
 }
 
-/** `country`: '' = everywhere; a code = problems in that country plus "anywhere" ones. */
-export function useIssues(sort: Sort, category: Category | 'all', country = '', max = 50) {
-  return useQuery<Issue>(
-    `issues:${sort}:${category}:${country}:${max}`,
-    () => [
+const PAGE = 50 // the rules allow at most 50 docs per list request
+
+/**
+ * The board feed, paged with cursors: page 1 first, `loadMore()` adds the next 50.
+ * Every page stays a live listener, so votes update in place.
+ * `country`: '' = everywhere; a code = problems in that country plus "anywhere" ones.
+ */
+export function useIssueFeed(sort: Sort, category: Category | 'all', country = '') {
+  const key = `${sort}:${category}:${country}`
+  const [cursors, setCursors] = useState<{ key: string; list: (QueryDocumentSnapshot | null)[] }>({
+    key,
+    list: [null],
+  })
+  const list = cursors.key === key ? cursors.list : [null]
+  const subKey = `${key}#${list.length}`
+  const [pages, setPages] = useState<{ key: string; byIndex: Record<number, QueryDocumentSnapshot[]>; error: Error | null }>(
+    { key: '', byIndex: {}, error: null },
+  )
+
+  useEffect(() => {
+    const filters = [
+      where('hidden', '==', false),
       ...(category === 'all' ? [] : [where('category', '==', category)]),
       ...(country ? [where('country', 'in', [country, ''])] : []),
       // Ties on votes: newest first.
       ...(sort === 'top' ? [orderBy('votes', 'desc')] : []),
       orderBy('createdAt', 'desc'),
-      limit(max),
-    ],
-    'issues',
-    [],
-  )
+    ]
+    const unsubs = list.map((cursor, i) =>
+      onSnapshot(
+        query(collection(db, 'issues'), ...filters, ...(cursor ? [startAfter(cursor)] : []), limit(PAGE)),
+        (snap) =>
+          setPages((prev) => ({
+            key: subKey,
+            // Keep already-loaded pages of the same feed while a new page subscribes.
+            byIndex: { ...(prev.key.startsWith(`${key}#`) ? prev.byIndex : {}), [i]: snap.docs },
+            error: null,
+          })),
+        (error) => {
+          console.error('issues', error)
+          setPages({ key: subKey, byIndex: {}, error })
+        },
+      ),
+    )
+    return () => unsubs.forEach((u) => u())
+    // `subKey` captures sort, category, country and the cursor list.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subKey])
+
+  const current = pages.key.startsWith(`${key}#`)
+    ? pages
+    : { byIndex: {} as Record<number, QueryDocumentSnapshot[]>, error: null }
+  const loaded = list.map((_, i) => current.byIndex[i])
+  const seen = new Set<string>()
+  const data: Issue[] = []
+  for (const page of loaded) {
+    for (const d of page ?? []) {
+      // Live reordering can move a doc across a page boundary; show it once.
+      if (seen.has(d.id)) continue
+      seen.add(d.id)
+      data.push({ id: d.id, ...d.data() } as Issue)
+    }
+  }
+  const last = loaded.at(-1)
+  return {
+    data,
+    loading: !loaded[0] && !current.error,
+    error: current.error,
+    loadingMore: list.length > 1 && !last,
+    hasMore: !!last && last.length === PAGE,
+    loadMore() {
+      if (!last?.length || last.length < PAGE) return
+      setCursors({ key, list: [...list, last.at(-1)!] })
+    },
+  }
 }
 
 export function useMyIssues(uid: string | undefined) {
@@ -80,7 +140,7 @@ export function useMyIssues(uid: string | undefined) {
 export function useSolutions(issueId: string) {
   return useQuery<Solution>(
     `solutions:${issueId}`,
-    () => [where('issueId', '==', issueId), orderBy('votes', 'desc'), limit(50)],
+    () => [where('issueId', '==', issueId), where('hidden', '==', false), orderBy('votes', 'desc'), limit(50)],
     'solutions',
     [],
   )
@@ -149,7 +209,7 @@ export function useVotedIssues() {
     const chunks: string[][] = []
     for (let i = 0; i < list.length; i += 30) chunks.push(list.slice(i, i + 30))
     let cancelled = false
-    Promise.all(chunks.map((c) => getDocs(query(collection(db, 'issues'), where(documentId(), 'in', c), limit(30)))))
+    Promise.all(chunks.map((c) => getDocs(query(collection(db, 'issues'), where(documentId(), 'in', c), where('hidden', '==', false), limit(30)))))
       .then((snaps) => {
         if (cancelled) return
         const data = snaps.flatMap((s) => s.docs.map((d) => ({ id: d.id, ...d.data() }) as Issue))
@@ -163,4 +223,20 @@ export function useVotedIssues() {
 
   if (!key) return { data: [] as Issue[], loading: false }
   return { data: state.data, loading: state.key !== key }
+}
+
+/** Whether the current user already reported this problem/solution (their own report doc). */
+export function useReported(coll: 'issues' | 'solutions', id: string) {
+  const { user } = useAuth()
+  const [state, setState] = useState<{ key: string; reported: boolean }>({ key: '', reported: false })
+  const key = `${coll}/${id}:${user?.uid}`
+  useEffect(() => {
+    if (!user) return
+    return onSnapshot(
+      doc(db, coll, id, 'reports', user.uid),
+      (snap) => setState({ key, reported: snap.exists() }),
+      () => setState({ key, reported: false }),
+    )
+  }, [coll, id, user, key])
+  return !!user && state.key === key && state.reported
 }

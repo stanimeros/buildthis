@@ -11,6 +11,8 @@ interface AuthState {
   profile: Profile | null | undefined
   loading: boolean
   isAdmin: boolean
+  /** too many of this user's posts were hidden by reports: read-only from now on */
+  blocked: boolean
   /** ids of issues / solutions the current user has voted on */
   issueVotes: Set<string>
   solutionVotes: Set<string>
@@ -23,6 +25,7 @@ const initial: AuthState = {
   profile: undefined,
   loading: true,
   isAdmin: false,
+  blocked: false,
   issueVotes: new Set(),
   solutionVotes: new Set(),
 }
@@ -48,7 +51,7 @@ function start() {
       set({ ...initial, loading: false, profile: null })
       return
     }
-    set({ user, profile: undefined, loading: true, isAdmin: false })
+    set({ user, profile: undefined, loading: true, isAdmin: false, blocked: false })
     unsubs.push(
       onSnapshot(
         doc(db, 'users', user.uid),
@@ -68,6 +71,12 @@ function start() {
           set({ issueVotes, solutionVotes })
         },
         (err) => console.error('votes', err),
+      ),
+      // Same limit as strikeLimit() in firestore.rules.
+      onSnapshot(
+        doc(db, 'strikes', user.uid),
+        (snap) => set({ blocked: (snap.get('count') ?? 0) >= 2 }),
+        () => set({ blocked: false }),
       ),
     )
     getDoc(doc(db, 'admins', user.uid))

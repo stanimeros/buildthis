@@ -39,7 +39,7 @@ const profile = (extra = {}) => ({
 const issue = (uid, extra = {}) => ({
   title: 'An app to split bills', body: 'Details', category: 'finance', country: '',
   authorId: uid, authorName: 'Alice', authorPhoto: '', votes: 0, builders: 0, solutions: 0,
-  createdAt: serverTimestamp(), ...extra,
+  hidden: false, createdAt: serverTimestamp(), ...extra,
 })
 
 // Seed data bypassing rules.
@@ -153,10 +153,11 @@ describe('issues', () => {
     await seedUser('a')
     await assertFails(postIssue('a', issue('a', { platform: 'ios' })))
   })
-  test('lists are capped at 50', async () => {
-    await assertSucceeds(getDocs(query(collection(db(), 'issues'), limit(50))))
-    await assertFails(getDocs(query(collection(db(), 'issues'), limit(51))))
-    await assertFails(getDocs(collection(db(), 'issues')))
+  test('lists are capped at 50 and must skip hidden ones', async () => {
+    const visible = (n) => query(collection(db(), 'issues'), where('hidden', '==', false), limit(n))
+    await assertSucceeds(getDocs(visible(50)))
+    await assertFails(getDocs(visible(51)))
+    await assertFails(getDocs(query(collection(db(), 'issues'), limit(50))))
   })
   test('bad category rejected', async () => {
     await seedUser('a')
@@ -256,7 +257,7 @@ function submit(uid, extra = {}, issueId = 'i1', daily = { solutionsDay: today()
   const b = writeBatch(f)
   b.set(doc(f, 'solutions', `${issueId}_${uid}`), {
     issueId, title: 'Splitly', url: 'https://splitly.app', body: '', authorId: uid,
-    authorName: 'Alice', authorPhoto: '', votes: 0, createdAt: serverTimestamp(), ...extra,
+    authorName: 'Alice', authorPhoto: '', votes: 0, hidden: false, createdAt: serverTimestamp(), ...extra,
   })
   b.update(doc(f, 'issues', issueId), { solutions: increment(1) })
   b.update(doc(f, 'users', uid), { lastSolutionAt: serverTimestamp(), lastSolutionId: `${issueId}_${uid}`, ...daily })
@@ -424,4 +425,94 @@ describe('closed by default', () => {
   test('signups cannot be read', () => assertFails(getDocs(collection(db('a'), 'signups'))))
   test('unknown collection closed', () => assertFails(setDoc(doc(db('a'), 'secrets', 'x'), { a: 1 })))
   test('admins not self-assignable', () => assertFails(setDoc(doc(db('a'), 'admins', 'a'), {})))
+})
+
+// ---------- moderation: reports, hiding, strikes ----------
+
+function reportIt(uid, { coll = 'issues', id = 'i1', author = 'author', hide = false } = {}) {
+  const f = db(uid)
+  const b = writeBatch(f)
+  b.set(doc(f, coll, id, 'reports', uid), { uid, createdAt: serverTimestamp() })
+  b.set(doc(f, coll, id, 'meta', 'moderation'), { reports: increment(1) }, { merge: true })
+  if (hide) {
+    b.update(doc(f, coll, id), { hidden: true })
+    b.set(doc(f, 'strikes', author), { count: increment(1), lastColl: coll, lastId: id }, { merge: true })
+  }
+  return b.commit()
+}
+
+describe('moderation', () => {
+  beforeEach(() => seedIssue('i1', { authorId: 'author' }))
+
+  test('one report per user', async () => {
+    await assertSucceeds(reportIt('r1'))
+    await assertFails(reportIt('r1'))
+  })
+  test('cannot hide before 3 reports', async () => {
+    await reportIt('r1')
+    await assertFails(reportIt('r2', { hide: true }))
+  })
+  test('3rd report must hide (and strike the author)', async () => {
+    await reportIt('r1')
+    await reportIt('r2')
+    await assertFails(reportIt('r3'))
+    await assertSucceeds(reportIt('r3', { hide: true }))
+  })
+  test('hiding without a strike is rejected', async () => {
+    await reportIt('r1')
+    await reportIt('r2')
+    const f = db('r3')
+    const b = writeBatch(f)
+    b.set(doc(f, 'issues', 'i1', 'reports', 'r3'), { uid: 'r3', createdAt: serverTimestamp() })
+    b.set(doc(f, 'issues', 'i1', 'meta', 'moderation'), { reports: increment(1) }, { merge: true })
+    b.update(doc(f, 'issues', 'i1'), { hidden: true })
+    await assertFails(b.commit())
+  })
+  test('report counts and other reports are private', async () => {
+    await reportIt('r1')
+    await assertFails(getDoc(doc(db('r1'), 'issues', 'i1', 'meta', 'moderation')))
+    await assertFails(getDoc(doc(db('r2'), 'issues', 'i1', 'reports', 'r1')))
+    await assertSucceeds(getDoc(doc(db('r1'), 'issues', 'i1', 'reports', 'r1')))
+  })
+  test('hidden: gone for others, visible to its author', async () => {
+    for (const r of ['r1', 'r2']) await reportIt(r)
+    await reportIt('r3', { hide: true })
+    await assertFails(getDoc(doc(db('someone'), 'issues', 'i1')))
+    await assertFails(getDoc(doc(db(), 'issues', 'i1')))
+    await assertSucceeds(getDoc(doc(db('author'), 'issues', 'i1')))
+  })
+  test('strikes cannot be forged', async () => {
+    await assertFails(setDoc(doc(db('r1'), 'strikes', 'author'), { count: 1, lastColl: 'issues', lastId: 'i1' }))
+  })
+  test('strikes are private', async () => {
+    await seed((f) => setDoc(doc(f, 'strikes', 'author'), { count: 1, lastColl: 'issues', lastId: 'i1' }))
+    await assertFails(getDoc(doc(db('r1'), 'strikes', 'author')))
+    await assertSucceeds(getDoc(doc(db('author'), 'strikes', 'author')))
+  })
+
+  describe('blocked user (2 strikes)', () => {
+    beforeEach(async () => {
+      await seedUser('author')
+      await seed((f) => setDoc(doc(f, 'strikes', 'author'), { count: 2, lastColl: 'issues', lastId: 'x' }))
+      await seedIssue('i2', { authorId: 'someone' })
+    })
+    test('cannot post', () => assertFails(postIssue('author', issue('author'))))
+    test('cannot vote', () => assertFails(vote('author', true, 'i2')))
+    test('cannot report', () => assertFails(reportIt('author', { id: 'i2', author: 'someone' })))
+    test('cannot claim', async () => {
+      const f = db('author')
+      const b = writeBatch(f)
+      b.set(doc(f, 'issues', 'i2', 'builders', 'author'), { uid: 'author', issueId: 'i2', createdAt: serverTimestamp() })
+      b.update(doc(f, 'issues', 'i2'), { builders: increment(1) })
+      await assertFails(b.commit())
+    })
+    test('cannot edit own problem', () =>
+      assertFails(updateDoc(doc(db('author'), 'issues', 'i1'), { title: 'Edited after being blocked' })))
+    test('can still delete the account (relabel content)', () =>
+      assertSucceeds(updateDoc(doc(db('author'), 'issues', 'i1'), { authorName: 'Deleted user', authorPhoto: '' })))
+    test('1 strike is still fine', async () => {
+      await seed((f) => setDoc(doc(f, 'strikes', 'author'), { count: 1, lastColl: 'issues', lastId: 'x' }))
+      await assertSucceeds(vote('author', true, 'i2'))
+    })
+  })
 })

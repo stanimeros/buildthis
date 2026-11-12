@@ -20,7 +20,7 @@ export function VoteButton({
   size?: 'md' | 'lg'
 }) {
   const { t } = useTranslation()
-  const { user } = useAuth()
+  const { user, blocked } = useAuth()
   const requireSignIn = useRequireSignIn()
   const [pending, setPending] = useState(false)
 
@@ -28,6 +28,7 @@ export function VoteButton({
     e.preventDefault()
     e.stopPropagation()
     if (!user) return requireSignIn()
+    if (blocked) return toast.error(t('blocked.title'))
     if (pending) return
     setPending(true)
     try {
