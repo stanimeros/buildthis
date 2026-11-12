@@ -1,8 +1,9 @@
-import { ClockIcon, FireIcon, PlusIcon } from '@phosphor-icons/react'
+import { ClockIcon, FireIcon, MagnifyingGlassIcon, PlusIcon } from '@phosphor-icons/react'
 import { m } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 
 import { categoryIcons } from '@/components/badges'
+import { EmptyState, LoadError } from '@/components/empty-state'
 import { ExampleIssues } from '@/components/example-issues'
 import { IssueCard } from '@/components/issue-card'
 import { CountrySelect } from '@/components/place'
@@ -104,19 +105,18 @@ export function Board() {
         {loading ? (
           <Spinner />
         ) : error ? (
-          <p className="py-16 text-center text-muted-foreground">{t('common.error')}</p>
+          <LoadError />
         ) : data.length === 0 && category === 'all' && !country ? (
           <ExampleIssues />
         ) : data.length === 0 ? (
-          <div className="flex flex-col items-center gap-4 rounded-3xl border border-dashed py-16 text-center">
-            <p className="text-muted-foreground">{t('issues.empty')}</p>
+          <EmptyState icon={MagnifyingGlassIcon} title={t('issues.empty')} body={t('issues.emptyBody')}>
             <Button variant="flame" asChild>
               <AuthLink to="/new">
                 <PlusIcon weight="bold" />
                 {t('issues.emptyCta')}
               </AuthLink>
             </Button>
-          </div>
+          </EmptyState>
         ) : (
           <>
             <ul className="space-y-3">

@@ -1,10 +1,11 @@
-import { PaperPlaneTiltIcon } from '@phosphor-icons/react'
+import { GlobeHemisphereEastIcon, MapPinIcon, PaperPlaneTiltIcon } from '@phosphor-icons/react'
 import { m } from 'motion/react'
 import { type FormEvent, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from '@/lib/nav'
 import { toast } from 'sonner'
 
+import { categoryIcons } from '@/components/badges'
 import { BlockedNotice } from '@/components/blocked-notice'
 import { Chips, Field, FormCard } from '@/components/field'
 import { CountrySelect } from '@/components/place'
@@ -131,7 +132,13 @@ function IssueForm({
             />
           </Field>
           <Field label={t('newIssue.fieldCategory')}>
-            <Chips options={categories} value={category} onChange={setCategory} label={(c) => t(`categories.${c}`)} />
+            <Chips
+              options={categories}
+              value={category}
+              onChange={setCategory}
+              label={(c) => t(`categories.${c}`)}
+              icon={(c) => categoryIcons[c]}
+            />
           </Field>
           <Field label={t('place.label')}>
             <Chips
@@ -139,6 +146,7 @@ function IssueForm({
               value={scoped ? 'specific' : 'anywhere'}
               onChange={(v) => setScoped(v === 'specific')}
               label={(v) => t(`place.${v}`)}
+              icon={(v) => (v === 'anywhere' ? GlobeHemisphereEastIcon : MapPinIcon)}
             />
           </Field>
           {scoped && (

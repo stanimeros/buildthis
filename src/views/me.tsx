@@ -1,13 +1,15 @@
-import { SignOutIcon, TrashIcon } from '@phosphor-icons/react'
+import { ArrowFatUpIcon, LightbulbIcon, PlusIcon, PuzzlePieceIcon, SignOutIcon, TrashIcon } from '@phosphor-icons/react'
 import { m } from 'motion/react'
 import { type FormEvent, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from '@/lib/nav'
 import { toast } from 'sonner'
 
+import { AuthLink } from '@/components/auth-dialog'
 import { Avatar } from '@/components/avatar'
 import { BlockedNotice } from '@/components/blocked-notice'
 import { useConfirm } from '@/components/confirm'
+import { EmptyState, LoadError } from '@/components/empty-state'
 import { Chips, Field } from '@/components/field'
 import { IssueCard } from '@/components/issue-card'
 import { Page } from '@/components/layout'
@@ -115,7 +117,20 @@ function Lists({ uid }: { uid: string }) {
     { id: 'votes', label: t('me.myVotes'), count: votes.data.length },
   ]
   const current = tab === 'issues' ? issues : tab === 'solutions' ? solutions : votes
-  const emptyKey = { issues: 'me.noIssues', solutions: 'me.noSolutions', votes: 'me.noVotes' }[tab]
+  const empty = {
+    issues: {
+      icon: LightbulbIcon,
+      title: t('me.noIssues'),
+      cta: (
+        <AuthLink to="/new">
+          <PlusIcon weight="bold" />
+          {t('nav.post')}
+        </AuthLink>
+      ),
+    },
+    solutions: { icon: PuzzlePieceIcon, title: t('me.noSolutions'), cta: <Link to="/#board">{t('home.builderCta')}</Link> },
+    votes: { icon: ArrowFatUpIcon, title: t('me.noVotes'), cta: <Link to="/#board">{t('issue.back')}</Link> },
+  }[tab]
 
   return (
     <section className="mt-12">
@@ -143,8 +158,14 @@ function Lists({ uid }: { uid: string }) {
       <div className="mt-6">
         {current.loading ? (
           <Spinner />
+        ) : 'error' in current && current.error ? (
+          <LoadError />
         ) : current.data.length === 0 ? (
-          <p className="rounded-3xl border border-dashed py-12 text-center text-muted-foreground">{t(emptyKey)}</p>
+          <EmptyState icon={empty.icon} title={empty.title}>
+            <Button variant="outline" asChild>
+              {empty.cta}
+            </Button>
+          </EmptyState>
         ) : tab === 'solutions' ? (
           <ul className="space-y-3">
             {solutions.data.map((s) => (

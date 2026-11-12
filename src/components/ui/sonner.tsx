@@ -1,5 +1,7 @@
 import { Toaster as Sonner, type ToasterProps } from "sonner"
-import { CheckCircleIcon, InfoIcon, WarningIcon, XCircleIcon, SpinnerIcon } from "@phosphor-icons/react"
+import { CheckCircleIcon, InfoIcon, WarningIcon, XCircleIcon } from "@phosphor-icons/react"
+
+import { Dots } from "@/components/spinner"
 
 const Toaster = ({ ...props }: ToasterProps) => {
   return (
@@ -20,7 +22,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
           <XCircleIcon className="size-4" />
         ),
         loading: (
-          <SpinnerIcon className="size-4 animate-spin" />
+          <Dots className="text-primary" />
         ),
       }}
       style={

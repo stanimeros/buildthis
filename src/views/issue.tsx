@@ -1,6 +1,6 @@
 import {
-  ArrowLeftIcon, ArrowSquareOutIcon, CheckIcon, EyeSlashIcon, HammerIcon, SpinnerGapIcon, PencilSimpleIcon,
-  PlusIcon, ShareNetworkIcon, TrashIcon,
+  ArrowLeftIcon, ArrowSquareOutIcon, CheckIcon, EyeSlashIcon, GhostIcon, HammerIcon, PencilSimpleIcon,
+  PlusIcon, PuzzlePieceIcon, ShareNetworkIcon, TrashIcon,
 } from '@phosphor-icons/react'
 import { AnimatePresence, m } from 'motion/react'
 import { useEffect, useState } from 'react'
@@ -9,11 +9,12 @@ import { Link, useNavigate, useParams } from '@/lib/nav'
 import { toast } from 'sonner'
 
 import { Avatar } from '@/components/avatar'
+import { EmptyState, LoadError } from '@/components/empty-state'
 import { ReportButton } from '@/components/report-button'
 import { useConfirm } from '@/components/confirm'
 import { CategoryBadge, PlaceBadge } from '@/components/badges'
 import { useRequireSignIn } from '@/components/require-auth'
-import { Spinner } from '@/components/spinner'
+import { Dots, Spinner } from '@/components/spinner'
 import { Button } from '@/components/ui/button'
 import { VoteButton } from '@/components/vote-button'
 import { useAuth } from '@/lib/auth'
@@ -144,7 +145,7 @@ function SolutionItem({ solution, index }: { solution: Solution; index: number }
           )}
           {(mine || isAdmin) && (
             <button onClick={remove} disabled={removing} className="inline-flex items-center gap-1 hover:text-destructive">
-              {removing ? <SpinnerGapIcon className="animate-spin" /> : <TrashIcon />} {t('issue.delete')}
+              {removing ? <Dots /> : <TrashIcon />} {t('issue.delete')}
             </button>
           )}
           {!mine && <ReportButton coll="solutions" id={solution.id} authorId={solution.authorId} compact />}
@@ -171,12 +172,11 @@ export function IssuePage() {
   if (loading) return <Spinner />
   if (!issue) {
     return (
-      <div className="mx-auto max-w-xl px-4 py-24 text-center">
-        <p className="text-lg text-muted-foreground">{t('issue.notFound')}</p>
-        <Button className="mt-6" asChild>
+      <EmptyState icon={GhostIcon} tone="missing" title={t('issue.notFound')} className="mx-auto max-w-xl py-24">
+        <Button asChild>
           <Link to="/">{t('issue.back')}</Link>
         </Button>
-      </div>
+      </EmptyState>
     )
   }
 
@@ -306,10 +306,10 @@ export function IssuePage() {
         <div className="mt-6">
           {solutions.loading ? (
             <Spinner />
+          ) : solutions.error ? (
+            <LoadError />
           ) : solutions.data.length === 0 ? (
-            <p className="rounded-3xl border border-dashed py-12 text-center text-muted-foreground">
-              {t('issue.noSolutions')}
-            </p>
+            <EmptyState icon={PuzzlePieceIcon} title={t('issue.noSolutions')} body={t('issue.noSolutionsBody')} />
           ) : (
             <ul className="space-y-3">
               {solutions.data.map((s, i) => (

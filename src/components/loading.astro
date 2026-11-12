@@ -1,11 +1,10 @@
 ---
-// Fallback shown while a client-only island loads. Matches the React <Spinner />.
+// Fallback shown while a client-only island loads. Same markup as <Spinner /> in spinner.tsx.
+const delays = ['', '[animation-delay:120ms]', '[animation-delay:240ms]']
 ---
 
-<div class="flex justify-center py-24" role="status" aria-live="polite">
-  <div class="flex gap-1.5">
-    <span class="size-2.5 animate-bounce rounded-full bg-primary"></span>
-    <span class="size-2.5 animate-bounce rounded-full bg-primary [animation-delay:120ms]"></span>
-    <span class="size-2.5 animate-bounce rounded-full bg-primary [animation-delay:240ms]"></span>
-  </div>
+<div class="flex justify-center py-24 text-primary" role="status" aria-live="polite">
+  <span aria-hidden="true" class="inline-flex items-center gap-[0.3em] py-[0.4em] text-[25px]">
+    {delays.map((d) => <span class:list={['size-[0.4em] animate-dot rounded-full bg-current', d]} />)}
+  </span>
 </div>

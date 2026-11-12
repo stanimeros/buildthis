@@ -5,6 +5,7 @@ import { Link } from '@/lib/nav'
 
 import { Avatar } from '@/components/avatar'
 import { Logo } from '@/components/logo'
+import { Dots } from '@/components/spinner'
 import { AuthLink } from '@/components/auth-dialog'
 import { Button } from '@/components/ui/button'
 import { languages, setLanguage } from '@/i18n'
@@ -64,7 +65,9 @@ export function Header() {
             </AuthLink>
           </Button>
           {loading ? (
-            <span className="size-10 animate-pulse rounded-full bg-muted" />
+            <span className="flex size-10 items-center justify-center text-muted-foreground" role="status">
+              <Dots />
+            </span>
           ) : user ? (
             <Link
               to="/me"
