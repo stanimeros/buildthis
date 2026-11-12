@@ -4,7 +4,7 @@ import Base from '@/layouts/base.astro'
 import IssueFormIsland from '@/islands/issue-form'
 ---
 
-<Base title="Post a problem" description="Describe the app you wish existed. Builders are watching.">
+<Base title="Post a problem" titleKey="meta.post" description="Describe the app you wish existed. Builders are watching.">
   <IssueFormIsland client:only="react">
     <Loading slot="fallback" />
   </IssueFormIsland>

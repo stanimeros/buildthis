@@ -13,12 +13,15 @@ interface Props {
   description?: string
   /** Pages served for many URLs (rewrites) or private pages. */
   noindex?: boolean
+  /** i18n key for the tab title once the visitor's language is known (src/i18n/index.ts) */
+  titleKey?: string
 }
 
 const {
   title,
   description = 'Post the problems you want an app for, upvote the ones you share, and let builders compete to solve them.',
   noindex = false,
+  titleKey,
 } = Astro.props
 const fullTitle = title ? `${title} · BuildThis` : 'BuildThis: build what people ask for'
 const canonical = new URL(Astro.url.pathname.replace(/\.html$/, '').replace(/\/index$/, '/'), Astro.site)
@@ -34,6 +37,7 @@ const canonical = new URL(Astro.url.pathname.replace(/\.html$/, '').replace(/\/i
     <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
     <link rel="preconnect" href="https://www.gstatic.com" />
     <title>{fullTitle}</title>
+    {titleKey && <meta name="bt:title" content={titleKey} />}
     <meta name="description" content={description} />
     {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
     <meta property="og:type" content="website" />

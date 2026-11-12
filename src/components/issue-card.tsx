@@ -7,7 +7,7 @@ import { Badge, CategoryBadge, PlaceBadge } from '@/components/badges'
 import { VoteButton } from '@/components/vote-button'
 import { useAuth } from '@/lib/auth'
 import { toggleIssueVote } from '@/lib/data'
-import { timeAgo } from '@/lib/format'
+import { authorLabel, timeAgo } from '@/lib/format'
 import { Link } from '@/lib/nav'
 import type { Issue } from '@/lib/types'
 
@@ -46,7 +46,7 @@ export function IssueCard({ issue, index = 0 }: { issue: Issue; index?: number }
             <span className="flex min-w-0 items-center gap-1.5">
               <Avatar name={issue.authorName} photo={issue.authorPhoto} className="size-4" />
               <span className="truncate">
-                {issue.authorName} · {timeAgo(issue.createdAt)}
+                {authorLabel(issue.authorName)} · {timeAgo(issue.createdAt)}
               </span>
             </span>
             <span className="ml-auto flex shrink-0 items-center gap-3 tabular-nums">

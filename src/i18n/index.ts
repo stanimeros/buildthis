@@ -53,6 +53,9 @@ export function applyDetectedLanguage() {
 if (typeof document !== 'undefined') {
   const syncHtmlLang = () => {
     document.documentElement.lang = i18n.resolvedLanguage ?? 'en'
+    // Pages are pre-rendered with English titles; translate the tab title (see layouts/base.astro).
+    const key = document.querySelector('meta[name="bt:title"]')?.getAttribute('content')
+    if (key) document.title = key === 'meta.home' ? i18n.t(key) : `${i18n.t(key)} · BuildThis`
   }
   i18n.on('languageChanged', syncHtmlLang)
   // <ClientRouter /> swaps <html> attributes on navigation; put ours back.

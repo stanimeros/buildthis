@@ -157,8 +157,8 @@ function Lists({ uid }: { uid: string }) {
 
   return (
     <section className="mt-12">
-      <div role="tablist" className="-mx-4 flex gap-1 overflow-x-auto px-4 [scrollbar-width:none]">
-        <div className="flex rounded-full border bg-card p-1">
+      <div role="tablist" className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none]">
+        <div className="flex w-full min-w-max rounded-full border bg-card p-1">
           {tabs.map(({ id, label, count }) => (
             <button
               key={id}
@@ -166,7 +166,7 @@ function Lists({ uid }: { uid: string }) {
               aria-selected={tab === id}
               onClick={() => setTab(id)}
               className={cn(
-                'relative rounded-full px-4 py-1.5 text-sm font-bold whitespace-nowrap transition-colors',
+                'relative flex-1 rounded-full px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors',
                 tab === id ? 'text-background' : 'text-muted-foreground hover:text-foreground',
               )}
             >
@@ -287,7 +287,7 @@ export function MePage() {
 
       <Lists uid={user.uid} />
 
-      <section className="mt-16 rounded-[2rem] border bg-card p-6 sm:p-8">
+      <section className="mt-8 rounded-[2rem] border bg-card p-6 sm:p-8">
         <h2 className="text-2xl font-extrabold tracking-tight">{t('me.profile')}</h2>
         <div className="mt-6">
           <ProfileForm profile={profile} />

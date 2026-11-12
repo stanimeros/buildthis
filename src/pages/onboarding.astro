@@ -4,7 +4,7 @@ import Base from '@/layouts/base.astro'
 import OnboardingIsland from '@/islands/onboarding'
 ---
 
-<Base title="Welcome" noindex>
+<Base title="Welcome" titleKey="meta.welcome" noindex>
   <OnboardingIsland client:only="react">
     <Loading slot="fallback" />
   </OnboardingIsland>

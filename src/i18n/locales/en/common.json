@@ -121,7 +121,10 @@
     "adminDelete": "Delete problem (admin)",
     "adminDeleteConfirm": "Delete this problem for everyone?",
     "share": "Share",
-    "copied": "Link copied"
+    "copied": "Link copied",
+    "deleteConfirm": "Delete your problem?",
+    "deleteBody": "It disappears for everyone, along with its upvotes. This can't be undone.",
+    "deleted": "Problem deleted."
   },
   "newIssue": {
     "title": "Post a problem",
@@ -253,7 +256,8 @@
     "cancel": "Cancel",
     "notFound": "Page not found.",
     "home": "Back home",
-    "signInToVote": "Sign in to upvote"
+    "signInToVote": "Sign in to upvote",
+    "deletedUser": "Deleted user"
   },
   "place": {
     "label": "Where is this a problem?",
@@ -280,5 +284,16 @@
   "blocked": {
     "title": "Your account is read-only",
     "body": "Several of your posts were hidden after reports from other users, so you can't post, vote or report any more."
+  },
+  "meta": {
+    "home": "BuildThis: build what people ask for",
+    "problem": "Problem",
+    "notFound": "Not found",
+    "signIn": "Sign in",
+    "me": "My account",
+    "submit": "Submit a solution",
+    "welcome": "Welcome",
+    "post": "Post a problem",
+    "edit": "Edit problem"
   }
 }

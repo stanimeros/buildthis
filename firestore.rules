@@ -415,7 +415,8 @@ service cloud.firestore {
         || hideByReports('issues', issueId)
         || (isAdmin() && changed().hasOnly(['hidden']));
 
-      allow delete: if isAdmin();
+      // The author can delete it until a builder has posted a solution; admins always.
+      allow delete: if isAdmin() || (isMe(resource.data.authorId) && resource.data.solutions == 0);
 
       match /reports/{uid} {
         allow read: if isMe(uid) || isAdmin();

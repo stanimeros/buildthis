@@ -4,7 +4,7 @@ import Base from '@/layouts/base.astro'
 import MeIsland from '@/islands/me'
 ---
 
-<Base title="My account" noindex>
+<Base title="My account" titleKey="meta.me" noindex>
   <MeIsland client:only="react">
     <Loading slot="fallback" />
   </MeIsland>

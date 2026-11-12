@@ -4,7 +4,7 @@ import Base from '@/layouts/base.astro'
 import SolutionFormIsland from '@/islands/solution-form'
 ---
 
-<Base title="Submit a solution" noindex>
+<Base title="Submit a solution" titleKey="meta.submit" noindex>
   <SolutionFormIsland client:only="react">
     <Loading slot="fallback" />
   </SolutionFormIsland>

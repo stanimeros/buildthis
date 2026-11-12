@@ -94,6 +94,13 @@ describe('users', () => {
 })
 
 describe('issues', () => {
+  test('author can delete own problem until it has a solution', async () => {
+    await seedIssue('i1', { authorId: 'a' })
+    await seedIssue('i2', { authorId: 'a', solutions: 1 })
+    await assertFails(deleteDoc(doc(db('b'), 'issues', 'i1')))
+    await assertFails(deleteDoc(doc(db('a'), 'issues', 'i2')))
+    await assertSucceeds(deleteDoc(doc(db('a'), 'issues', 'i1')))
+  })
   test('anyone can read', async () => {
     await seedIssue()
     await assertSucceeds(getDoc(doc(db(), 'issues', 'i1')))
@@ -178,8 +185,8 @@ describe('issues', () => {
     await seedIssue('i1', { authorId: 'a' })
     await assertFails(updateDoc(doc(db('b'), 'issues', 'i1'), { title: 'A hijacked title' }))
   })
-  test('author cannot delete, admin can', async () => {
-    await seedIssue('i1', { authorId: 'a' })
+  test('admin can delete even with solutions', async () => {
+    await seedIssue('i1', { authorId: 'a', solutions: 2 })
     await seed((f) => setDoc(doc(f, 'admins', 'boss'), {}))
     await assertFails(deleteDoc(doc(db('a'), 'issues', 'i1')))
     await assertSucceeds(deleteDoc(doc(db('boss'), 'issues', 'i1')))

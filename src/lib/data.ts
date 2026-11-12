@@ -202,7 +202,8 @@ export async function toggleSolutionVote(id: string, voted: boolean) {
   if (!voted) track('vote', { target: 'solution' })
 }
 
-export async function adminDeleteIssue(id: string) {
+/** Author (while it has no solutions) or admin. Vote docs stay behind as orphans; ids are never reused. */
+export async function deleteIssue(id: string) {
   await deleteDoc(doc(db, 'issues', id))
 }
 

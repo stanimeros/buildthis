@@ -19,9 +19,9 @@ import { Button } from '@/components/ui/button'
 import { VoteButton } from '@/components/vote-button'
 import { useAuth } from '@/lib/auth'
 import {
-  adminDeleteIssue, removeSolution, solutionId, toggleBuilder, toggleIssueVote, toggleSolutionVote,
+  deleteIssue, removeSolution, solutionId, toggleBuilder, toggleIssueVote, toggleSolutionVote,
 } from '@/lib/data'
-import { hostOf, timeAgo } from '@/lib/format'
+import { authorLabel, hostOf, timeAgo } from '@/lib/format'
 import { useClaim, useIssue, useSolutions } from '@/lib/hooks'
 import type { Issue, Solution } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -136,7 +136,7 @@ function SolutionItem({ solution, index }: { solution: Solution; index: number }
           </a>
           <span className="inline-flex items-center gap-1.5">
             <Avatar name={solution.authorName} photo={solution.authorPhoto} className="size-4" />
-            {solution.authorName} · {timeAgo(solution.createdAt)}
+            {authorLabel(solution.authorName)} · {timeAgo(solution.createdAt)}
           </span>
           {mine && (
             <Link to={`/p/${solution.issueId}/submit`} className="inline-flex items-center gap-1 hover:text-foreground">
@@ -166,7 +166,10 @@ export function IssuePage() {
   const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
-    if (issue) document.title = `${issue.title} · BuildThis`
+    if (!issue) return
+    // The problem's own title wins over the translated "Problem" placeholder.
+    document.querySelector('meta[name="bt:title"]')?.remove()
+    document.title = `${issue.title} · BuildThis`
   }, [issue])
 
   if (loading) return <Spinner />
@@ -196,12 +199,18 @@ export function IssuePage() {
     }
   }
 
-  async function adminDelete() {
-    const ok = await confirm({ title: t('issue.adminDeleteConfirm'), confirmLabel: t('issue.delete'), destructive: true })
+  async function remove() {
+    const ok = await confirm({
+      title: t(mine ? 'issue.deleteConfirm' : 'issue.adminDeleteConfirm'),
+      description: mine ? t('issue.deleteBody') : undefined,
+      confirmLabel: t('issue.delete'),
+      destructive: true,
+    })
     if (!ok) return
     setDeleting(true)
     try {
-      await adminDeleteIssue(issue!.id)
+      await deleteIssue(issue!.id)
+      toast.success(t('issue.deleted'))
       navigate('/')
     } catch (err) {
       console.error(err)
@@ -256,7 +265,7 @@ export function IssuePage() {
             </div>
             <p className="mt-3 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
               <Avatar name={issue.authorName} photo={issue.authorPhoto} className="size-5" />
-              {t('issue.by', { name: issue.authorName })} · {timeAgo(issue.createdAt)}
+              {t('issue.by', { name: authorLabel(issue.authorName) })} · {timeAgo(issue.createdAt)}
             </p>
           </div>
         </div>
@@ -278,10 +287,11 @@ export function IssuePage() {
             </Button>
           )}
           {!mine && <ReportButton coll="issues" id={issue.id} authorId={issue.authorId} />}
-          {isAdmin && (
-            <Button size="lg" variant="destructive" onClick={adminDelete} loading={deleting}>
+          {/* Mirrors the rules: authors until the first solution, admins always. */}
+          {((mine && issue.solutions === 0) || isAdmin) && (
+            <Button size="lg" variant="ghost" className="text-destructive hover:text-destructive" onClick={remove} loading={deleting}>
               <TrashIcon weight="bold" />
-              {t('issue.adminDelete')}
+              {t(mine ? 'issue.delete' : 'issue.adminDelete')}
             </Button>
           )}
         </div>

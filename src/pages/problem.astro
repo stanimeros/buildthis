@@ -4,7 +4,7 @@ import Base from '@/layouts/base.astro'
 import IssueIsland from '@/islands/issue'
 ---
 
-<Base title="Problem" noindex>
+<Base title="Problem" titleKey="meta.problem" noindex>
   <IssueIsland client:only="react">
     <Loading slot="fallback" />
   </IssueIsland>

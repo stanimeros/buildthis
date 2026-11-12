@@ -1,4 +1,5 @@
 import type { Timestamp } from 'firebase/firestore'
+import i18n from 'i18next'
 
 import { currentLanguage } from '@/i18n'
 
@@ -27,4 +28,9 @@ export function hostOf(url: string) {
   } catch {
     return url
   }
+}
+
+/** Deleted accounts are stored as "Deleted user" (the rules check that exact text); show it translated. */
+export function authorLabel(name: string) {
+  return name === 'Deleted user' ? i18n.t('common.deletedUser') : name
 }
