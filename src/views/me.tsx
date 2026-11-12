@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input'
 import { currentLanguage } from '@/i18n'
 import { signOut, useAuth } from '@/lib/auth'
 import { isCountry } from '@/lib/countries'
-import { deleteAccount, updateProfile } from '@/lib/data'
+import { deleteAccount, isReservedName, updateProfile } from '@/lib/data'
 import { hostOf, timeAgo } from '@/lib/format'
 import { useMyIssues, useMySolutions, useVotedIssues } from '@/lib/hooks'
 import { type Profile, stacks } from '@/lib/types'
@@ -37,7 +37,7 @@ function ProfileForm({ profile }: { profile: Profile }) {
   const [saving, setSaving] = useState(false)
   const builder = role !== 'user'
   const linkOk = !link.trim() || /^https:\/\/\S+\.\S+$/.test(link.trim())
-  const nameOk = name.trim().length >= 1
+  const nameOk = name.trim().length >= 1 && !isReservedName(name)
 
   async function save(e: FormEvent) {
     e.preventDefault()
@@ -63,7 +63,7 @@ function ProfileForm({ profile }: { profile: Profile }) {
 
   return (
     <form onSubmit={save} noValidate className="space-y-6">
-      <Field id="name" label={t('onboarding.name')}>
+      <Field id="name" label={t('onboarding.name')} error={isReservedName(name) ? t('onboarding.nameReserved') : null}>
         <Input id="name" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} aria-invalid={!nameOk} />
       </Field>
       <Field label={t('me.role')}>
@@ -191,14 +191,6 @@ export function MePage() {
   }
 
   async function remove() {
-    // Firebase requires a recent sign-in to delete an account.
-    const last = Date.parse(user!.metadata.lastSignInTime ?? '')
-    if (!last || Date.now() - last > 5 * 60_000) {
-      toast(t('me.reauth'))
-      await signOut()
-      navigate('/signin?next=%2Fme')
-      return
-    }
     const ok = await confirm({
       title: t('me.deleteConfirm'),
       description: t('me.dangerBody'),
@@ -212,8 +204,11 @@ export function MePage() {
       toast.success(t('me.deleted'))
       navigate('/')
     } catch (err) {
-      console.error(err)
-      toast.error(t('common.error'))
+      const code = (err as { code?: string }).code
+      if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
+        console.error(err)
+        toast.error(t('common.error'))
+      }
       setDeleting(false)
     }
   }

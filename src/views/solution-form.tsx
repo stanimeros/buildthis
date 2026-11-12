@@ -114,7 +114,7 @@ function SolutionForm({
     }
     setSending(true)
     try {
-      if (existing) await updateSolution(existing.id, clean)
+      if (existing) await updateSolution(profile!, existing.id, clean)
       else await submitSolution(profile!, issueId, clean)
       navigate(`/p/${issueId}`)
     } catch (err) {

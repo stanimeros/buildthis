@@ -39,6 +39,25 @@ npm run dev:local     # Astro dev server wired to the emulators
 
 Google sign-in works in the emulator: the popup lets you create a fake account.
 
+## Security
+
+`firestore.rules` is the whole backend (no Cloud Functions), covered by `tests/rules.test.mjs`:
+
+- Votes and "I'm building this" claims are one doc per user (`…/votes/{uid}`, `…/builders/{uid}`),
+  readable only by that user. Everyone else only sees the counters.
+- Counters move by exactly ±1, in the same batch as the vote/claim/solution doc.
+- One solution per user per problem; builders only; the problem must be claimed at least 1 hour earlier.
+- Limits: 10 min between problems, 2 min between solutions, max 5 problems / 3 solutions per UTC day,
+  one create per batch. The user doc that holds these is never deletable from the client.
+- Lists are paged (max 50 per request). Google sign-in only. Avatars only from Google.
+- App Check (reCAPTCHA Enterprise) proves requests come from this site. After deploying, turn on
+  enforcement for Firestore in the Firebase console (App Check → APIs).
+
+## Seed data
+
+`node scripts/seed.mjs` adds a dozen example problems (posted by BuildThis, 0 votes) to the emulator;
+`--prod` writes them to production with your `gcloud` login.
+
 ## Tests
 
 ```sh

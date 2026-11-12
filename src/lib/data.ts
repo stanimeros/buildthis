@@ -1,12 +1,22 @@
-import { deleteUser } from 'firebase/auth'
+import { deleteUser, GoogleAuthProvider, reauthenticateWithPopup } from 'firebase/auth'
 import {
-  collection, deleteDoc, doc, getDocs, increment, limit, orderBy, query, type QueryDocumentSnapshot,
-  serverTimestamp, setDoc, startAfter, updateDoc, where, writeBatch,
+  collection, collectionGroup, deleteDoc, doc, getDocs, increment, limit, orderBy, type Query, query,
+  type QueryDocumentSnapshot, serverTimestamp, setDoc, startAfter, updateDoc, where, writeBatch,
 } from 'firebase/firestore'
 
 import { auth, db, track } from '@/lib/firebase'
 import { bumpDaily } from '@/lib/quota'
 import type { IssueInput, Profile, Role } from '@/lib/types'
+
+/** Only Google-hosted avatars are allowed by the rules. */
+export function googlePhoto(url: string | null | undefined) {
+  return url && /^https:\/\/lh3\.googleusercontent\.com\/\S{1,480}$/.test(url) ? url : ''
+}
+
+/** Mirrors reservedName() in the rules. */
+export function isReservedName(name: string) {
+  return ['buildthis', 'build this'].includes(name.trim().toLowerCase())
+}
 
 function me() {
   const user = auth.currentUser
@@ -27,7 +37,7 @@ export async function createProfile(input: ProfileInput, source: string) {
   const user = me()
   await setDoc(doc(db, 'users', user.uid), {
     ...input,
-    photo: user.photoURL ?? '',
+    photo: googlePhoto(user.photoURL),
     source,
     onboardedAt: serverTimestamp(),
     createdAt: serverTimestamp(),
@@ -56,17 +66,19 @@ export async function postIssue(
     solutions: 0,
     createdAt: serverTimestamp(),
   })
-  batch.update(doc(db, 'users', user.uid), { lastIssueAt: serverTimestamp(), ...bumpDaily(profile, 'issues') })
+  batch.update(doc(db, 'users', user.uid), {
+    lastIssueAt: serverTimestamp(),
+    lastIssueId: ref.id,
+    ...bumpDaily(profile, 'issues'),
+  })
   await batch.commit()
   track('post_issue', { category: input.category })
   return ref.id
 }
 
-export async function updateIssue(
-  id: string,
-  input: IssueInput,
-) {
-  await updateDoc(doc(db, 'issues', id), input)
+/** Edits also refresh the author label, which the rules require to match the current profile. */
+export async function updateIssue(profile: Profile, id: string, input: IssueInput) {
+  await updateDoc(doc(db, 'issues', id), { ...input, authorName: profile.name, authorPhoto: profile.photo })
 }
 
 export async function toggleIssueVote(issueId: string, voted: boolean) {
@@ -103,8 +115,9 @@ export async function submitSolution(
   input: { title: string; url: string; body: string },
 ) {
   const uid = me().uid
+  const id = solutionId(issueId, uid)
   const batch = writeBatch(db)
-  batch.set(doc(db, 'solutions', solutionId(issueId, uid)), {
+  batch.set(doc(db, 'solutions', id), {
     ...input,
     issueId,
     authorId: uid,
@@ -114,17 +127,20 @@ export async function submitSolution(
     createdAt: serverTimestamp(),
   })
   batch.update(doc(db, 'issues', issueId), { solutions: increment(1) })
-  batch.update(doc(db, 'users', uid), { lastSolutionAt: serverTimestamp(), ...bumpDaily(profile, 'solutions') })
+  batch.update(doc(db, 'users', uid), {
+    lastSolutionAt: serverTimestamp(),
+    lastSolutionId: id,
+    ...bumpDaily(profile, 'solutions'),
+  })
   await batch.commit()
   track('submit_solution')
 }
 
-export async function updateSolution(id: string, input: { title: string; url: string; body: string }) {
-  await updateDoc(doc(db, 'solutions', id), input)
+export async function updateSolution(profile: Profile, id: string, input: { title: string; url: string; body: string }) {
+  await updateDoc(doc(db, 'solutions', id), { ...input, authorName: profile.name, authorPhoto: profile.photo })
 }
 
-export async function removeSolution(id: string, issueId: string, asAdmin = false) {
-  if (asAdmin) return deleteDoc(doc(db, 'solutions', id))
+export async function removeSolution(id: string, issueId: string) {
   const batch = writeBatch(db)
   batch.delete(doc(db, 'solutions', id))
   batch.update(doc(db, 'issues', issueId), { solutions: increment(-1) })
@@ -146,30 +162,62 @@ export async function adminDeleteIssue(id: string) {
   await deleteDoc(doc(db, 'issues', id))
 }
 
-/** GDPR: anonymise authored content, delete the profile, then the auth account. */
+const DELETED = 'Deleted user'
+
+/**
+ * GDPR delete. Order matters for the rules:
+ * 1. fresh Google sign-in (Firebase requires it to delete an account),
+ * 2. blank the profile (it is never deleted: that would reset the posting limits),
+ * 3. relabel authored content to match the blanked profile,
+ * 4. drop "I'm building this" claims (keeps counters right),
+ * 5. delete the Auth account.
+ * Votes stay as anonymous counts; their docs only hold the (now orphaned) uid.
+ */
 export async function deleteAccount() {
   const user = me()
-  const anon = { authorName: 'Deleted user', authorPhoto: '' }
+  await reauthenticateWithPopup(user, new GoogleAuthProvider())
+  await updateDoc(doc(db, 'users', user.uid), {
+    name: DELETED,
+    photo: '',
+    country: '',
+    stack: [],
+    link: '',
+    source: '',
+  })
+
   // Lists are capped at 50 per request by the rules, so page through.
-  for (const path of ['issues', 'solutions']) {
+  async function eachPage(q: (cursor?: QueryDocumentSnapshot) => Query, fn: (docs: QueryDocumentSnapshot[]) => Promise<void>) {
     let cursor: QueryDocumentSnapshot | undefined
     for (;;) {
-      const page = await getDocs(
-        query(
-          collection(db, path),
-          where('authorId', '==', user.uid),
-          orderBy('createdAt'),
-          ...(cursor ? [startAfter(cursor)] : []),
-          limit(50),
-        ),
-      )
-      if (page.empty) break
-      const batch = writeBatch(db)
-      page.forEach((d) => batch.update(d.ref, anon))
-      await batch.commit()
+      const page = await getDocs(q(cursor))
+      if (page.empty) return
+      await fn(page.docs)
       cursor = page.docs.at(-1)
     }
   }
-  await deleteDoc(doc(db, 'users', user.uid))
+  for (const path of ['issues', 'solutions']) {
+    await eachPage(
+      (cursor) =>
+        query(
+          collection(db, path),
+          where('authorId', '==', user.uid),
+          orderBy('createdAt', 'desc'),
+          ...(cursor ? [startAfter(cursor)] : []),
+          limit(50),
+        ),
+      async (docs) => {
+        const batch = writeBatch(db)
+        docs.forEach((d) => batch.update(d.ref, { authorName: DELETED, authorPhoto: '' }))
+        await batch.commit()
+      },
+    )
+  }
+  const claims = await getDocs(query(collectionGroup(db, 'builders'), where('uid', '==', user.uid)))
+  for (const claim of claims.docs) {
+    const batch = writeBatch(db)
+    batch.delete(claim.ref)
+    batch.update(doc(db, 'issues', claim.get('issueId')), { builders: increment(-1) })
+    await batch.commit().catch(() => {}) // issue may be gone
+  }
   await deleteUser(user)
 }

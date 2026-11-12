@@ -58,7 +58,9 @@ export function useIssues(sort: Sort, category: Category | 'all', country = '', 
     () => [
       ...(category === 'all' ? [] : [where('category', '==', category)]),
       ...(country ? [where('country', 'in', [country, ''])] : []),
-      orderBy(sort === 'top' ? 'votes' : 'createdAt', 'desc'),
+      // Ties on votes: newest first.
+      ...(sort === 'top' ? [orderBy('votes', 'desc')] : []),
+      orderBy('createdAt', 'desc'),
       limit(max),
     ],
     'issues',

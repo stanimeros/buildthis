@@ -16,7 +16,8 @@ export const app = initializeApp({
   measurementId: env.PUBLIC_FIREBASE_MEASUREMENT_ID,
 })
 
-if (env.PUBLIC_RECAPTCHA_ENTERPRISE_KEY) {
+// Proves requests come from this site (not a script with the public API key). Not used with emulators.
+if (env.PUBLIC_RECAPTCHA_ENTERPRISE_KEY && !env.PUBLIC_USE_EMULATORS && typeof window !== 'undefined') {
   initializeAppCheck(app, {
     provider: new ReCaptchaEnterpriseProvider(env.PUBLIC_RECAPTCHA_ENTERPRISE_KEY),
     isTokenAutoRefreshEnabled: true,

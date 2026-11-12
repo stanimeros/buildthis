@@ -32,6 +32,7 @@ export function CountrySelect({
 }) {
   const { t, i18n } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
   const options = useMemo(
     () => countryOptions(i18n.language).map((code) => ({ code, name: countryName(code, i18n.language) })),
     [i18n.language],
@@ -44,7 +45,13 @@ export function CountrySelect({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (next) setSearch('')
+      }}
+    >
       <PopoverTrigger asChild>
         <button
           id={id}
@@ -78,7 +85,7 @@ export function CountrySelect({
       </PopoverTrigger>
       <PopoverContent align="start" className="w-72 p-0">
         <Command>
-          <CommandInput placeholder={t('place.search')} />
+          <CommandInput placeholder={t('place.search')} value={search} onValueChange={setSearch} />
           <CommandList>
             <CommandEmpty>{t('place.noMatch')}</CommandEmpty>
             <CommandGroup>

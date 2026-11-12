@@ -85,7 +85,7 @@ function SolutionItem({ solution, index }: { solution: Solution; index: number }
     const ok = await confirm({ title: t('issue.deleteSolutionConfirm'), confirmLabel: t('issue.delete'), destructive: true })
     if (!ok) return
     try {
-      await removeSolution(solution.id, solution.issueId, !mine && isAdmin)
+      await removeSolution(solution.id, solution.issueId)
     } catch (err) {
       console.error(err)
       toast.error(t('common.error'))

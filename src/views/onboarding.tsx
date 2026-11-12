@@ -13,7 +13,7 @@ import { CountrySelect } from '@/components/place'
 import { Input } from '@/components/ui/input'
 import { currentLanguage } from '@/i18n'
 import { useAuth } from '@/lib/auth'
-import { createProfile } from '@/lib/data'
+import { createProfile, isReservedName } from '@/lib/data'
 import { guessCountry } from '@/lib/countries'
 import { safeNext } from '@/lib/next'
 import { getSource } from '@/lib/source'
@@ -78,7 +78,7 @@ export function OnboardingPage() {
   if (profile && !saving) return <Navigate to={next} replace />
 
   const builder = role === 'builder' || role === 'both'
-  const nameOk = name.trim().length >= 1 && name.trim().length <= 60
+  const nameOk = name.trim().length >= 1 && name.trim().length <= 60 && !isReservedName(name)
   const linkOk = !link.trim() || /^https:\/\/\S+\.\S+$/.test(link.trim())
 
   async function finish(e: FormEvent) {
@@ -138,7 +138,7 @@ export function OnboardingPage() {
               </div>
             ) : (
               <form onSubmit={finish} noValidate className="space-y-6">
-                <Field id="name" label={t('onboarding.name')}>
+                <Field id="name" label={t('onboarding.name')} error={isReservedName(name) ? t('onboarding.nameReserved') : null}>
                   <Input id="name" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} />
                 </Field>
                 <Field id="country" label={t('onboarding.country')}>

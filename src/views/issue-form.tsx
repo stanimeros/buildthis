@@ -82,7 +82,7 @@ function IssueForm({
     setSending(true)
     try {
       if (editing) {
-        await updateIssue(editId!, clean)
+        await updateIssue(profile!, editId!, clean)
         navigate(`/p/${editId}`)
       } else {
         const newId = await postIssue(profile!, clean)

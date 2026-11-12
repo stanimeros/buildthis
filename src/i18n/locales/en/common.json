@@ -180,7 +180,8 @@
     "next": "Continue",
     "finish": "Let's go",
     "saving": "Saving…",
-    "error": "Couldn't save. Please try again."
+    "error": "Couldn't save. Please try again.",
+    "nameReserved": "That name is reserved. Pick another one."
   },
   "me": {
     "title": "My account",
@@ -197,7 +198,6 @@
     "danger": "Delete account",
     "dangerBody": "Removes your profile and sign-in. Your problems and solutions stay, shown as \"Deleted user\".",
     "deleteConfirm": "Delete your account? This can't be undone.",
-    "reauth": "For security, sign in again, then delete your account.",
     "deleted": "Your account was deleted."
   },
   "common": {

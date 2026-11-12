@@ -24,7 +24,12 @@ before(async () => {
 after(() => env.cleanup())
 beforeEach(() => env.clearFirestore())
 
-const db = (uid) => (uid ? env.authenticatedContext(uid) : env.unauthenticatedContext()).firestore()
+// Signed in with Google unless another provider is given.
+const db = (uid, provider = 'google.com') =>
+  (uid
+    ? env.authenticatedContext(uid, { firebase: { sign_in_provider: provider } })
+    : env.unauthenticatedContext()
+  ).firestore()
 
 const profile = (extra = {}) => ({
   name: 'Alice', photo: '', role: 'both', country: 'GR', stack: ['web'], link: '', lang: 'en',
@@ -51,8 +56,9 @@ async function seedIssue(id = 'i1', extra = {}) {
 function postIssue(uid, data = issue(uid), daily = { issuesDay: today(), issuesToday: 1 }) {
   const f = db(uid)
   const b = writeBatch(f)
-  b.set(doc(collection(f, 'issues')), data)
-  b.update(doc(f, 'users', uid), { lastIssueAt: serverTimestamp(), ...daily })
+  const ref = doc(collection(f, 'issues'))
+  b.set(ref, data)
+  b.update(doc(f, 'users', uid), { lastIssueAt: serverTimestamp(), lastIssueId: ref.id, ...daily })
   return b.commit()
 }
 
@@ -157,6 +163,7 @@ describe('issues', () => {
     await assertFails(postIssue('a', issue('a', { category: 'crypto' })))
   })
   test('author can edit title', async () => {
+    await seedUser('a')
     await seedIssue('i1', { authorId: 'a' })
     await assertSucceeds(updateDoc(doc(db('a'), 'issues', 'i1'), { title: 'A better title here' }))
   })
@@ -252,7 +259,7 @@ function submit(uid, extra = {}, issueId = 'i1', daily = { solutionsDay: today()
     authorName: 'Alice', authorPhoto: '', votes: 0, createdAt: serverTimestamp(), ...extra,
   })
   b.update(doc(f, 'issues', issueId), { solutions: increment(1) })
-  b.update(doc(f, 'users', uid), { lastSolutionAt: serverTimestamp(), ...daily })
+  b.update(doc(f, 'users', uid), { lastSolutionAt: serverTimestamp(), lastSolutionId: `${issueId}_${uid}`, ...daily })
   return b.commit()
 }
 
@@ -288,6 +295,15 @@ describe('solutions', () => {
     await seedUser('a') // reset cooldown + daily counter
     await assertFails(submit('a'))
   })
+  test('admin removes a solution and the counter follows', async () => {
+    await submit('a')
+    await seed((f) => setDoc(doc(f, 'admins', 'boss'), {}))
+    const f = db('boss')
+    const b = writeBatch(f)
+    b.delete(doc(f, 'solutions', 'i1_a'))
+    b.update(doc(f, 'issues', 'i1'), { solutions: increment(-1) })
+    await assertSucceeds(b.commit())
+  })
   test('wrong id rejected', async () => {
     const f = db('a')
     const b = writeBatch(f)
@@ -316,6 +332,92 @@ describe('solutions', () => {
     b.update(doc(f, 'issues', 'i1'), { solutions: increment(-1) })
     await assertSucceeds(b.commit())
   })
+})
+
+describe('security review', () => {
+  test('two problems in one batch are rejected', async () => {
+    await seedUser('a')
+    const f = db('a')
+    const b = writeBatch(f)
+    const r1 = doc(collection(f, 'issues'))
+    const r2 = doc(collection(f, 'issues'))
+    b.set(r1, issue('a'))
+    b.set(r2, issue('a'))
+    b.update(doc(f, 'users', 'a'), { lastIssueAt: serverTimestamp(), lastIssueId: r2.id, issuesDay: today(), issuesToday: 1 })
+    await assertFails(b.commit())
+  })
+  test('two solutions in one batch are rejected', async () => {
+    await seedIssue('i1')
+    await seedIssue('i2')
+    await seedUser('a')
+    await seedClaim('a', hoursAgo(2), 'i1')
+    await seedClaim('a', hoursAgo(2), 'i2')
+    const f = db('a')
+    const b = writeBatch(f)
+    for (const id of ['i1', 'i2']) {
+      b.set(doc(f, 'solutions', `${id}_a`), {
+        issueId: id, title: 'Spam', url: 'https://spam.example', body: '', authorId: 'a',
+        authorName: 'Alice', authorPhoto: '', votes: 0, createdAt: serverTimestamp(),
+      })
+      b.update(doc(f, 'issues', id), { solutions: increment(1) })
+    }
+    b.update(doc(f, 'users', 'a'), { lastSolutionAt: serverTimestamp(), lastSolutionId: 'i2_a', solutionsDay: today(), solutionsToday: 1 })
+    await assertFails(b.commit())
+  })
+  test('own user doc cannot be deleted (would reset limits)', async () => {
+    await seedUser('a')
+    await assertFails(deleteDoc(doc(db('a'), 'users', 'a')))
+  })
+  test('account deletion can blank the profile', async () => {
+    await seedUser('a')
+    await assertSucceeds(updateDoc(doc(db('a'), 'users', 'a'), {
+      name: 'Deleted user', photo: '', country: '', stack: [], link: '', source: '',
+    }))
+  })
+  test('cannot pose as BuildThis', async () => {
+    await seedUser('a')
+    await assertFails(postIssue('a', issue('a', { authorName: 'BuildThis', authorPhoto: '' })))
+    await assertFails(updateDoc(doc(db('a'), 'users', 'a'), { name: 'Build This' }))
+  })
+  test('author name must match the profile', async () => {
+    await seedUser('a')
+    await assertFails(postIssue('a', issue('a', { authorName: 'Someone else' })))
+  })
+  test('avatars only from Google', async () => {
+    await assertFails(setDoc(doc(db('a'), 'users', 'a'), profile({ photo: 'https://evil.example/pixel.gif' })))
+    await assertSucceeds(setDoc(doc(db('b'), 'users', 'b'), profile({ photo: 'https://lh3.googleusercontent.com/a/abc=s96-c' })))
+  })
+  test('custom issue ids are rejected', async () => {
+    await seedUser('a')
+    const f = db('a')
+    const b = writeBatch(f)
+    b.set(doc(f, 'issues', 'my-own-id'), issue('a'))
+    b.update(doc(f, 'users', 'a'), { lastIssueAt: serverTimestamp(), lastIssueId: 'my-own-id', issuesDay: today(), issuesToday: 1 })
+    await assertFails(b.commit())
+  })
+  test('non-Google accounts cannot vote', async () => {
+    await seedIssue('i1')
+    const f = db('a', 'password')
+    const b = writeBatch(f)
+    b.set(doc(f, 'issues', 'i1', 'votes', 'a'), { uid: 'a', issueId: 'i1', createdAt: serverTimestamp() })
+    b.update(doc(f, 'issues', 'i1'), { votes: increment(1) })
+    await assertFails(b.commit())
+  })
+  test('own claims via collection group, nobody else\'s', async () => {
+    await seedClaim('a', hoursAgo(1), 'i1')
+    await assertSucceeds(getDocs(query(collectionGroup(db('a'), 'builders'), where('uid', '==', 'a'))))
+    await assertFails(getDocs(query(collectionGroup(db('b'), 'builders'), where('uid', '==', 'a'))))
+    await assertFails(getDoc(doc(db('b'), 'issues', 'i1', 'builders', 'a')))
+  })
+  test('nobody can read who voted', async () => {
+    await seedIssue('i1')
+    await seed((f) => setDoc(doc(f, 'issues', 'i1', 'votes', 'a'), { uid: 'a', issueId: 'i1', createdAt: Timestamp.now() }))
+    await assertFails(getDocs(collection(db('b'), 'issues', 'i1', 'votes')))
+    await assertFails(getDoc(doc(db('b'), 'issues', 'i1', 'votes', 'a')))
+    await assertFails(getDocs(collection(db(), 'issues', 'i1', 'votes')))
+  })
+  test('legacy signups are closed', () =>
+    assertFails(addDoc(collection(db(), 'signups'), { email: 'a@b.co', type: 'problem', text: '', lang: 'en', source: '', createdAt: serverTimestamp() })))
 })
 
 describe('closed by default', () => {

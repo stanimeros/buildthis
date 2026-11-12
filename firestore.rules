@@ -4,8 +4,9 @@ service cloud.firestore {
 
     // ---------- helpers ----------
 
+    // Google accounts only, so enabling another provider later can't open vote farming.
     function signedIn() {
-      return request.auth != null;
+      return request.auth != null && request.auth.token.firebase.sign_in_provider == 'google.com';
     }
 
     function isMe(uid) {
@@ -94,14 +95,32 @@ service cloud.firestore {
       return request.query.limit != null && request.query.limit <= 50;
     }
 
+    // Avatars come from Google only (no tracking pixels from arbitrary hosts).
+    function validPhoto(p) {
+      return p is string && (p == '' || p.matches('^https://lh3\\.googleusercontent\\.com/[^\\s]{1,480}$'));
+    }
+
+    // Nobody can pose as the official account.
+    function reservedName(n) {
+      return n.lower().trim() in ['buildthis', 'build this'];
+    }
+
+    // authorName/authorPhoto on content must match the author's own profile.
+    function authorMatchesProfile(d) {
+      let profile = get(userPath(request.auth.uid)).data;
+      return d.authorName == profile.name && d.authorPhoto == profile.photo;
+    }
+
     // ---------- users ----------
 
     function validProfile(d) {
       return d.keys().hasOnly(['name', 'photo', 'role', 'country', 'stack', 'link', 'lang', 'source',
                                'lastIssueAt', 'lastSolutionAt', 'onboardedAt', 'createdAt',
-                               'issuesDay', 'issuesToday', 'solutionsDay', 'solutionsToday'])
+                               'issuesDay', 'issuesToday', 'solutionsDay', 'solutionsToday',
+                               'lastIssueId', 'lastSolutionId'])
         && str(d.name, 1, 60)
-        && str(d.photo, 0, 500)
+        && !reservedName(d.name)
+        && validPhoto(d.photo)
         && d.role in ['user', 'builder', 'both']
         && validCountry(d.country)
         && d.stack is list && d.stack.size() <= 10
@@ -119,17 +138,24 @@ service cloud.firestore {
         && request.resource.data.onboardedAt == request.time
         && !('lastIssueAt' in request.resource.data)
         && !('lastSolutionAt' in request.resource.data)
-        && !request.resource.data.keys().hasAny(['issuesDay', 'issuesToday', 'solutionsDay', 'solutionsToday']);
+        && !request.resource.data.keys().hasAny(['issuesDay', 'issuesToday', 'solutionsDay', 'solutionsToday',
+                                                 'lastIssueId', 'lastSolutionId']);
       allow update: if isMe(uid)
         && validProfile(request.resource.data)
-        && !changed().hasAny(['createdAt', 'onboardedAt', 'source'])
+        && !changed().hasAny(['createdAt', 'onboardedAt'])
+        // `source` is fixed, except blanked when the account is deleted.
+        && (!changed().hasAny(['source']) || request.resource.data.source == '')
+        && str(request.resource.data.get('lastIssueId', ''), 0, 40)
+        && str(request.resource.data.get('lastSolutionId', ''), 0, 200)
         // Cooldown stamps can only ever move to "now", never be backdated.
         && (!changed().hasAny(['lastIssueAt']) || request.resource.data.lastIssueAt == request.time)
         && (!changed().hasAny(['lastSolutionAt']) || request.resource.data.lastSolutionAt == request.time)
         // Max 5 problems and 3 solutions per UTC day.
         && (!changed().hasAny(['issuesDay', 'issuesToday']) || validDaily('issuesDay', 'issuesToday', 5))
         && (!changed().hasAny(['solutionsDay', 'solutionsToday']) || validDaily('solutionsDay', 'solutionsToday', 3));
-      allow delete: if isMe(uid);
+      // Never deleted from the client: deleting and recreating it would reset the limits.
+      // Account deletion blanks the personal fields instead (src/lib/data.ts deleteAccount).
+      allow delete: if false;
     }
 
     match /admins/{uid} {
@@ -144,7 +170,7 @@ service cloud.firestore {
         && d.category in categories()
         && validCountry(d.country)
         && str(d.authorName, 1, 60)
-        && str(d.authorPhoto, 0, 500);
+        && validPhoto(d.authorPhoto);
     }
 
     match /issues/{issueId} {
@@ -152,23 +178,29 @@ service cloud.firestore {
       allow list: if smallPage();
 
       allow create: if onboarded()
+        // Auto ids only: recreating a deleted issue's id would revive its old vote docs.
+        && issueId.matches('^[A-Za-z0-9]{20}$')
         && request.resource.data.keys().hasOnly(['title', 'body', 'category', 'country', 'authorId',
                                                  'authorName', 'authorPhoto', 'votes', 'builders',
                                                  'solutions', 'createdAt'])
         && validIssueContent(request.resource.data)
+        && authorMatchesProfile(request.resource.data)
         && request.resource.data.authorId == request.auth.uid
         && request.resource.data.votes == 0
         && request.resource.data.builders == 0
         && request.resource.data.solutions == 0
         && request.resource.data.createdAt == request.time
         && cooledDown('lastIssueAt', 10)
-        && countedToday('issuesDay', 'issuesToday');
+        && countedToday('issuesDay', 'issuesToday')
+        // One create per batch: the user doc can only name one new issue.
+        && getAfter(userPath(request.auth.uid)).data.get('lastIssueId', '') == issueId;
 
       allow update: if
         // Author edits content.
         (isMe(resource.data.authorId)
           && changed().hasOnly(['title', 'body', 'category', 'country', 'authorName', 'authorPhoto'])
-          && validIssueContent(request.resource.data))
+          && validIssueContent(request.resource.data)
+          && authorMatchesProfile(request.resource.data))
         // Vote / unvote, together with the vote doc.
         || (signedIn() && bumped('votes', 1)
           && !exists(/databases/$(database)/documents/issues/$(issueId)/votes/$(request.auth.uid))
@@ -189,7 +221,9 @@ service cloud.firestore {
           && existsAfter(/databases/$(database)/documents/solutions/$(issueId + '_' + request.auth.uid)))
         || (signedIn() && bumped('solutions', -1)
           && exists(/databases/$(database)/documents/solutions/$(issueId + '_' + request.auth.uid))
-          && !existsAfter(/databases/$(database)/documents/solutions/$(issueId + '_' + request.auth.uid)));
+          && !existsAfter(/databases/$(database)/documents/solutions/$(issueId + '_' + request.auth.uid)))
+        // Admin removing someone's solution keeps the counter right.
+        || (isAdmin() && bumped('solutions', -1));
 
       allow delete: if isAdmin();
 
@@ -231,7 +265,7 @@ service cloud.firestore {
         && str(d.url, 10, 300) && d.url.matches('^https://[^\\s]+$')
         && str(d.body, 0, 1000)
         && str(d.authorName, 1, 60)
-        && str(d.authorPhoto, 0, 500);
+        && validPhoto(d.authorPhoto);
     }
 
     match /solutions/{solutionId} {
@@ -243,9 +277,12 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['issueId', 'title', 'url', 'body', 'authorId',
                                                  'authorName', 'authorPhoto', 'votes', 'createdAt'])
         && validSolutionContent(request.resource.data)
+        && authorMatchesProfile(request.resource.data)
         && request.resource.data.authorId == request.auth.uid
         && request.resource.data.votes == 0
         && request.resource.data.createdAt == request.time
+        // One create per batch (see issues).
+        && getAfter(userPath(request.auth.uid)).data.get('lastSolutionId', '') == solutionId
         && exists(/databases/$(database)/documents/issues/$(request.resource.data.issueId))
         && getAfter(/databases/$(database)/documents/issues/$(request.resource.data.issueId)).data.solutions
            == get(/databases/$(database)/documents/issues/$(request.resource.data.issueId)).data.solutions + 1
@@ -260,7 +297,8 @@ service cloud.firestore {
       allow update: if
         (isMe(resource.data.authorId)
           && changed().hasOnly(['title', 'url', 'body', 'authorName', 'authorPhoto'])
-          && validSolutionContent(request.resource.data))
+          && validSolutionContent(request.resource.data)
+          && authorMatchesProfile(request.resource.data))
         || (signedIn() && bumped('votes', 1)
           && !exists(/databases/$(database)/documents/solutions/$(solutionId)/votes/$(request.auth.uid))
           && existsAfter(/databases/$(database)/documents/solutions/$(solutionId)/votes/$(request.auth.uid)))
@@ -268,11 +306,12 @@ service cloud.firestore {
           && exists(/databases/$(database)/documents/solutions/$(solutionId)/votes/$(request.auth.uid))
           && !existsAfter(/databases/$(database)/documents/solutions/$(solutionId)/votes/$(request.auth.uid)));
 
-      // Author removes their solution (issue counter goes down in the same batch), or admin.
-      allow delete: if isAdmin()
-        || (isMe(resource.data.authorId)
-          && getAfter(/databases/$(database)/documents/issues/$(resource.data.issueId)).data.solutions
-             == get(/databases/$(database)/documents/issues/$(resource.data.issueId)).data.solutions - 1);
+      // Author or admin removes a solution; the issue counter goes down in the same batch
+      // (or the issue itself is already gone).
+      allow delete: if (isMe(resource.data.authorId) || isAdmin())
+        && (!exists(/databases/$(database)/documents/issues/$(resource.data.issueId))
+            || getAfter(/databases/$(database)/documents/issues/$(resource.data.issueId)).data.solutions
+               == get(/databases/$(database)/documents/issues/$(resource.data.issueId)).data.solutions - 1);
 
       match /votes/{uid} {
         allow read: if isMe(uid);
@@ -289,25 +328,12 @@ service cloud.firestore {
       }
     }
 
-    // "My votes" on /me: collection-group query over issue votes, own docs only.
+    // "My votes" on /me and own claims (account deletion): collection-group queries, own docs only.
     match /{path=**}/votes/{uid} {
       allow read: if signedIn() && resource.data.uid == request.auth.uid;
     }
-
-    // ---------- legacy validation sign-ups (write-only) ----------
-
-    match /signups/{id} {
-      allow create: if request.resource.data.keys().hasOnly(['email', 'type', 'text', 'lang', 'source', 'createdAt'])
-        && request.resource.data.email is string
-        && request.resource.data.email.size() <= 254
-        && request.resource.data.email.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$')
-        && request.resource.data.type in ['problem', 'builder']
-        && request.resource.data.text is string
-        && request.resource.data.text.size() <= 1000
-        && request.resource.data.lang in ['en', 'el']
-        && request.resource.data.source is string
-        && request.resource.data.source.size() <= 200
-        && request.resource.data.createdAt == request.time;
+    match /{path=**}/builders/{uid} {
+      allow read: if signedIn() && resource.data.uid == request.auth.uid;
     }
   }
 }
