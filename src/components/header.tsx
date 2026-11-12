@@ -1,4 +1,4 @@
-import { PlusIcon } from '@phosphor-icons/react'
+import { PlusIcon, SignInIcon } from '@phosphor-icons/react'
 import { motion } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 import { Link } from '@/lib/nav'
@@ -78,7 +78,9 @@ export function Header() {
               />
             </Link>
           ) : (
-            <Button onClick={openAuthDialog}>{t('nav.signIn')}</Button>
+            <Button size="icon" className="size-10" onClick={openAuthDialog} aria-label={t('nav.signIn')} title={t('nav.signIn')}>
+              <SignInIcon weight="bold" className="size-5" />
+            </Button>
           )}
         </div>
       </div>
