@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from '@/lib/nav'
 
 import { Board } from '@/components/board'
+import { Community } from '@/components/community'
 import { Hero } from '@/components/hero'
 import { HowItWorks } from '@/components/how-it-works'
 import { AuthLink } from '@/components/auth-dialog'
@@ -58,6 +59,7 @@ export function HomePage() {
       <div className="mt-16">
         <HowItWorks />
       </div>
+      <Community />
       <Bands />
     </>
   )

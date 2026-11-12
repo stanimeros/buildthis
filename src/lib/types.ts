@@ -21,6 +21,8 @@ export interface Profile {
   link: string
   lang: 'en' | 'el'
   source: string
+  /** builder opted in to show their avatar on the landing page (mirrored to `community/{uid}`) */
+  public?: boolean
   lastIssueAt?: Timestamp
   lastSolutionAt?: Timestamp
   /** daily quotas (see src/lib/quota.ts) */
@@ -30,6 +32,13 @@ export interface Profile {
   solutionsToday?: number
   onboardedAt: Timestamp
   createdAt: Timestamp
+}
+
+/** A builder shown on the landing page. Mirrors name + photo of their profile. */
+export interface CommunityMember {
+  id: string
+  name: string
+  photo: string
 }
 
 export interface Issue {

@@ -25,9 +25,9 @@ after(() => env.cleanup())
 beforeEach(() => env.clearFirestore())
 
 // Signed in with Google unless another provider is given.
-const db = (uid, provider = 'google.com') =>
+const db = (uid, provider = 'google.com', emailVerified = true) =>
   (uid
-    ? env.authenticatedContext(uid, { firebase: { sign_in_provider: provider } })
+    ? env.authenticatedContext(uid, { firebase: { sign_in_provider: provider }, email_verified: emailVerified })
     : env.unauthenticatedContext()
   ).firestore()
 
@@ -62,11 +62,18 @@ function postIssue(uid, data = issue(uid), daily = { issuesDay: today(), issuesT
   return b.commit()
 }
 
+// Signup: the profile plus the public counters, in one batch (see statsInStep in the rules).
+function signUp(uid, data = profile(), stats = { users: increment(1), builders: increment(data.role === 'user' ? 0 : 1) }, f = db(uid)) {
+  const b = writeBatch(f)
+  b.set(doc(f, 'users', uid), data)
+  if (stats) b.set(doc(f, 'stats', 'global'), stats, { merge: true })
+  return b.commit()
+}
+
 describe('users', () => {
-  test('can create own profile', () => assertSucceeds(setDoc(doc(db('a'), 'users', 'a'), profile())))
+  test('can create own profile', () => assertSucceeds(signUp('a')))
   test('cannot create someone else\'s profile', () => assertFails(setDoc(doc(db('a'), 'users', 'b'), profile())))
-  test('cannot set a cooldown on create', () =>
-    assertFails(setDoc(doc(db('a'), 'users', 'a'), profile({ lastIssueAt: serverTimestamp() }))))
+  test('cannot set a cooldown on create', () => assertFails(signUp('a', profile({ lastIssueAt: serverTimestamp() }))))
   test('cannot read others', async () => {
     await seedUser('b')
     await assertFails(getDoc(doc(db('a'), 'users', 'b')))
@@ -75,8 +82,7 @@ describe('users', () => {
     await seedUser('a')
     await assertFails(updateDoc(doc(db('a'), 'users', 'a'), { lastIssueAt: Timestamp.fromMillis(0) }))
   })
-  test('cannot set a free-text country', () =>
-    assertFails(setDoc(doc(db('a'), 'users', 'a'), profile({ country: 'Greece' }))))
+  test('cannot set a free-text country', () => assertFails(signUp('a', profile({ country: 'Greece' }))))
   test('cannot reset the daily counter', async () => {
     await seedUser('a', { issuesDay: today(), issuesToday: 5 })
     await assertFails(updateDoc(doc(db('a'), 'users', 'a'), { issuesToday: 0 }))
@@ -231,7 +237,10 @@ describe('builders', () => {
   function claim(uid, on = true, upgrade = false) {
     const f = db(uid)
     const b = writeBatch(f)
-    if (upgrade) b.update(doc(f, 'users', uid), { role: 'both' })
+    if (upgrade) {
+      b.update(doc(f, 'users', uid), { role: 'both' })
+      b.set(doc(f, 'stats', 'global'), { builders: increment(1) }, { merge: true })
+    }
     const d = doc(f, 'issues', 'i1', 'builders', uid)
     if (on) b.set(d, { uid, issueId: 'i1', createdAt: serverTimestamp() })
     else b.delete(d)
@@ -371,9 +380,14 @@ describe('security review', () => {
   })
   test('account deletion can blank the profile', async () => {
     await seedUser('a')
-    await assertSucceeds(updateDoc(doc(db('a'), 'users', 'a'), {
-      name: 'Deleted user', photo: '', country: '', stack: [], link: '', source: '',
-    }))
+    await seed((f) => setDoc(doc(f, 'stats', 'global'), { users: 5, builders: 2 }))
+    const blank = { name: 'Deleted user', photo: '', country: '', stack: [], link: '', source: '', public: false }
+    await assertFails(updateDoc(doc(db('a'), 'users', 'a'), blank))
+    const f = db('a')
+    const b = writeBatch(f)
+    b.update(doc(f, 'users', 'a'), blank)
+    b.set(doc(f, 'stats', 'global'), { users: increment(-1), builders: increment(-1) }, { merge: true })
+    await assertSucceeds(b.commit())
   })
   test('cannot pose as BuildThis', async () => {
     await seedUser('a')
@@ -385,8 +399,8 @@ describe('security review', () => {
     await assertFails(postIssue('a', issue('a', { authorName: 'Someone else' })))
   })
   test('avatars only from Google', async () => {
-    await assertFails(setDoc(doc(db('a'), 'users', 'a'), profile({ photo: 'https://evil.example/pixel.gif' })))
-    await assertSucceeds(setDoc(doc(db('b'), 'users', 'b'), profile({ photo: 'https://lh3.googleusercontent.com/a/abc=s96-c' })))
+    await assertFails(signUp('a', profile({ photo: 'https://evil.example/pixel.gif' })))
+    await assertSucceeds(signUp('b', profile({ photo: 'https://lh3.googleusercontent.com/a/abc=s96-c' })))
   })
   test('custom issue ids are rejected', async () => {
     await seedUser('a')
@@ -396,14 +410,19 @@ describe('security review', () => {
     b.update(doc(f, 'users', 'a'), { lastIssueAt: serverTimestamp(), lastIssueId: 'my-own-id', issuesDay: today(), issuesToday: 1 })
     await assertFails(b.commit())
   })
-  test('non-Google accounts cannot vote', async () => {
+  test('email accounts vote only once verified; other providers never', async () => {
     await seedIssue('i1')
-    const f = db('a', 'password')
-    const b = writeBatch(f)
-    b.set(doc(f, 'issues', 'i1', 'votes', 'a'), { uid: 'a', issueId: 'i1', createdAt: serverTimestamp() })
-    b.update(doc(f, 'issues', 'i1'), { votes: increment(1) })
-    await assertFails(b.commit())
+    const vote = (f) => {
+      const b = writeBatch(f)
+      b.set(doc(f, 'issues', 'i1', 'votes', 'a'), { uid: 'a', issueId: 'i1', createdAt: serverTimestamp() })
+      b.update(doc(f, 'issues', 'i1'), { votes: increment(1) })
+      return b.commit()
+    }
+    await assertFails(vote(db('a', 'anonymous')))
+    await assertFails(vote(db('a', 'password', false)))
+    await assertSucceeds(vote(db('a', 'password')))
   })
+  test('unverified email accounts cannot sign up', () => assertFails(signUp('a', profile(), undefined, db('a', 'password', false))))
   test('own claims via collection group, nobody else\'s', async () => {
     await seedClaim('a', hoursAgo(1), 'i1')
     await assertSucceeds(getDocs(query(collectionGroup(db('a'), 'builders'), where('uid', '==', 'a'))))
@@ -514,5 +533,75 @@ describe('moderation', () => {
       await seed((f) => setDoc(doc(f, 'strikes', 'author'), { count: 1, lastColl: 'issues', lastId: 'x' }))
       await assertSucceeds(vote('author', true, 'i2'))
     })
+  })
+})
+
+describe('stats', () => {
+  test('anyone can read the counters', async () => {
+    await seed((f) => setDoc(doc(f, 'stats', 'global'), { users: 3, builders: 1 }))
+    await assertSucceeds(getDoc(doc(db(null), 'stats', 'global')))
+  })
+  test('signup must bump the counters, and by the right amount', async () => {
+    await assertFails(signUp('a', profile(), null))
+    await assertFails(signUp('a', profile(), { users: increment(2), builders: increment(1) }))
+    await assertFails(signUp('a', profile({ role: 'user' }), { users: increment(1), builders: increment(1) }))
+    await assertSucceeds(signUp('a', profile({ role: 'user' })))
+  })
+  test('cannot bump the counters without a matching change', async () => {
+    await seedUser('a')
+    await assertFails(setDoc(doc(db('a'), 'stats', 'global'), { users: increment(1) }, { merge: true }))
+  })
+  test('role changes move the builder count', async () => {
+    await seedUser('a', { role: 'user' })
+    await assertFails(updateDoc(doc(db('a'), 'users', 'a'), { role: 'builder' }))
+    const f = db('a')
+    const b = writeBatch(f)
+    b.update(doc(f, 'users', 'a'), { role: 'builder' })
+    b.set(doc(f, 'stats', 'global'), { builders: increment(1) }, { merge: true })
+    await assertSucceeds(b.commit())
+  })
+})
+
+describe('community', () => {
+  function join(uid, data = { name: 'Alice', photo: '' }, userPatch = { public: true }) {
+    const f = db(uid)
+    const b = writeBatch(f)
+    b.update(doc(f, 'users', uid), userPatch)
+    b.set(doc(f, 'community', uid), { ...data, updatedAt: serverTimestamp() })
+    return b.commit()
+  }
+  function leave(uid) {
+    const f = db(uid)
+    const b = writeBatch(f)
+    b.update(doc(f, 'users', uid), { public: false })
+    b.delete(doc(f, 'community', uid))
+    return b.commit()
+  }
+  test('anyone can list a page of the community', async () => {
+    await assertSucceeds(getDocs(query(collection(db(null), 'community'), limit(40))))
+    await assertFails(getDocs(collection(db(null), 'community')))
+  })
+  test('builder can join and leave', async () => {
+    await seedUser('a')
+    await assertSucceeds(join('a'))
+    await assertSucceeds(leave('a'))
+  })
+  test('must opt in on the profile, and copy its name and photo', async () => {
+    await seedUser('a')
+    await assertFails(join('a', undefined, { link: '' }))
+    await assertFails(join('a', { name: 'Someone else', photo: '' }))
+  })
+  test('plain users cannot be public', async () => {
+    await seedUser('a', { role: 'user' })
+    await assertFails(join('a'))
+  })
+  test('opting out must remove the community doc', async () => {
+    await seedUser('a')
+    await assertSucceeds(join('a'))
+    await assertFails(updateDoc(doc(db('a'), 'users', 'a'), { public: false }))
+  })
+  test('cannot join for someone else', async () => {
+    await seedUser('b')
+    await assertFails(setDoc(doc(db('a'), 'community', 'b'), { name: 'Alice', photo: '', updatedAt: serverTimestamp() }))
   })
 })

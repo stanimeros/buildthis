@@ -18,25 +18,29 @@ import { Button } from '@/components/ui/button'
 import { CountrySelect } from '@/components/place'
 import { Input } from '@/components/ui/input'
 import { currentLanguage } from '@/i18n'
-import { signOut, useAuth } from '@/lib/auth'
+import { isGoogle, signOut, useAuth } from '@/lib/auth'
 import { isCountry } from '@/lib/countries'
-import { deleteAccount, isReservedName, updateProfile } from '@/lib/data'
+import { deleteAccount, googlePhoto, isReservedName, updateProfile } from '@/lib/data'
 import { hostOf, timeAgo } from '@/lib/format'
 import { useMyIssues, useMySolutions, useVotedIssues } from '@/lib/hooks'
 import { type Profile, stacks } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { RolePicker } from '@/views/onboarding'
+import { PublicToggle, RolePicker } from '@/views/onboarding'
 
 type Tab = 'issues' | 'solutions' | 'votes'
 
 function ProfileForm({ profile }: { profile: Profile }) {
   const { t } = useTranslation()
+  const { user } = useAuth()
+  const googleAvatar = googlePhoto(user?.photoURL)
   const [name, setName] = useState(profile.name)
+  const [photo, setPhoto] = useState(profile.photo)
   const [role, setRole] = useState(profile.role)
   // Older profiles stored free text here; only keep it if it's a country code.
   const [country, setCountry] = useState(isCountry(profile.country) ? profile.country : '')
   const [stack, setStack] = useState(profile.stack)
   const [link, setLink] = useState(profile.link)
+  const [isPublic, setPublic] = useState(profile.public ?? false)
   const [saving, setSaving] = useState(false)
   const builder = role !== 'user'
   const linkOk = !link.trim() || /^https:\/\/\S+\.\S+$/.test(link.trim())
@@ -47,13 +51,15 @@ function ProfileForm({ profile }: { profile: Profile }) {
     if (!linkOk || !nameOk) return
     setSaving(true)
     try {
-      await updateProfile({
+      await updateProfile(profile, {
         name: name.trim(),
+        photo,
         role,
         country,
         stack: builder ? stack : [],
         link: builder ? link.trim() : '',
         lang: currentLanguage(),
+        public: builder && isPublic,
       })
       toast.success(t('me.saved'))
     } catch (err) {
@@ -68,6 +74,22 @@ function ProfileForm({ profile }: { profile: Profile }) {
     <form onSubmit={save} noValidate className="space-y-6">
       <Field id="name" label={t('onboarding.name')} error={isReservedName(name) ? t('onboarding.nameReserved') : null}>
         <Input id="name" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} aria-invalid={!nameOk} />
+      </Field>
+      <Field label={t('me.photo')} hint={t('me.photoHint')}>
+        <div className="flex items-center gap-4">
+          <Avatar name={name || profile.name} photo={photo} className="size-14 text-xl" />
+          {photo ? (
+            <Button type="button" variant="outline" onClick={() => setPhoto('')}>
+              {t('me.photoRemove')}
+            </Button>
+          ) : (
+            googleAvatar && (
+              <Button type="button" variant="outline" onClick={() => setPhoto(googleAvatar)}>
+                {t('me.photoGoogle')}
+              </Button>
+            )
+          )}
+        </div>
       </Field>
       <Field label={t('me.role')}>
         <RolePicker value={role} onChange={setRole} />
@@ -96,6 +118,7 @@ function ProfileForm({ profile }: { profile: Profile }) {
               aria-invalid={!linkOk}
             />
           </Field>
+          <PublicToggle value={isPublic} onChange={setPublic} />
         </>
       )}
       <Button type="submit" size="lg" loading={saving}>
@@ -206,6 +229,7 @@ export function MePage() {
   const [deleting, setDeleting] = useState(false)
   const [dialog, confirm] = useConfirm()
   if (!user || !profile) return <Spinner />
+  const current = { user, profile }
 
   async function out() {
     await signOut()
@@ -213,21 +237,25 @@ export function MePage() {
   }
 
   async function remove() {
+    const withPassword = !isGoogle(current.user)
     const ok = await confirm({
       title: t('me.deleteConfirm'),
       description: t('me.dangerBody'),
       confirmLabel: t('me.danger'),
       destructive: true,
+      ...(withPassword && { input: { label: t('signin.password'), type: 'password', autoComplete: 'current-password' } }),
     })
     if (!ok) return
     setDeleting(true)
     try {
-      await deleteAccount()
+      await deleteAccount(current.profile, typeof ok === 'string' ? ok : undefined)
       toast.success(t('me.deleted'))
       navigate('/')
     } catch (err) {
       const code = (err as { code?: string }).code
-      if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
+      if (code === 'auth/invalid-credential' || code === 'auth/wrong-password') {
+        toast.error(t('signin.wrongPassword'))
+      } else if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
         console.error(err)
         toast.error(t('common.error'))
       }
@@ -272,7 +300,7 @@ export function MePage() {
         </div>
       </section>
 
-      <section className="mt-8 rounded-[2rem] border border-destructive/30 p-6 sm:p-8">
+      <section className="mt-8 rounded-[2rem] border border-destructive/30 bg-destructive/5 p-6 sm:p-8">
         <h2 className="text-xl font-bold text-destructive">{t('me.danger')}</h2>
         <p className="mt-2 text-sm text-muted-foreground">{t('me.dangerBody')}</p>
         <Button variant="destructive" className="mt-4" onClick={remove} loading={deleting}>

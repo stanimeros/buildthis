@@ -1,7 +1,7 @@
-import { deleteUser, GoogleAuthProvider, reauthenticateWithPopup } from 'firebase/auth'
+import { deleteUser, EmailAuthProvider, GoogleAuthProvider, reauthenticateWithCredential, reauthenticateWithPopup } from 'firebase/auth'
 import {
   collection, collectionGroup, deleteDoc, doc, getDocs, increment, limit, orderBy, type Query, query,
-  type QueryDocumentSnapshot, serverTimestamp, setDoc, startAfter, updateDoc, where, writeBatch,
+  type QueryDocumentSnapshot, serverTimestamp, startAfter, updateDoc, where, type WriteBatch, writeBatch,
 } from 'firebase/firestore'
 
 import { auth, db, track } from '@/lib/firebase'
@@ -26,27 +26,66 @@ function me() {
 
 export interface ProfileInput {
   name: string
+  /** Google avatar, or '' to show initials instead */
+  photo: string
   role: Role
   country: string
   stack: string[]
   link: string
   lang: 'en' | 'el'
+  /** show on the landing page (builders only) */
+  public: boolean
 }
 
-export async function createProfile(input: ProfileInput, source: string) {
+const DELETED = 'Deleted user'
+
+type Counted = Pick<Profile, 'name' | 'role'> | null
+
+/** Moves `stats/global` by this user's change (signup, role change, deletion); mirrors statsInStep(). */
+function bumpStats(batch: WriteBatch, before: Counted, after: Counted) {
+  const counted = (p: Counted) => (p && p.name !== DELETED ? 1 : 0)
+  const building = (p: Counted) => (counted(p) && p!.role !== 'user' ? 1 : 0)
+  const users = counted(after) - counted(before)
+  const builders = building(after) - building(before)
+  if (!users && !builders) return
+  batch.set(doc(db, 'stats', 'global'), { users: increment(users), builders: increment(builders) }, { merge: true })
+}
+
+/** Keeps `community/{uid}` in step with the profile, in the same batch (the rules check both). */
+function syncCommunity(batch: WriteBatch, uid: string, input: ProfileInput) {
+  const ref = doc(db, 'community', uid)
+  if (input.public) batch.set(ref, { name: input.name, photo: input.photo, updatedAt: serverTimestamp() })
+  else batch.delete(ref)
+}
+
+export async function createProfile(fields: Omit<ProfileInput, 'photo'>, source: string) {
   const user = me()
-  await setDoc(doc(db, 'users', user.uid), {
+  const input = { ...fields, photo: googlePhoto(user.photoURL) }
+  const batch = writeBatch(db)
+  batch.set(doc(db, 'users', user.uid), {
     ...input,
-    photo: googlePhoto(user.photoURL),
     source,
     onboardedAt: serverTimestamp(),
     createdAt: serverTimestamp(),
   })
+  if (input.public) syncCommunity(batch, user.uid, input)
+  bumpStats(batch, null, input)
+  await batch.commit()
   track('onboarding_complete', { role: input.role })
 }
 
-export async function updateProfile(input: ProfileInput) {
-  await updateDoc(doc(db, 'users', me().uid), { ...input })
+/** A new name or photo is also copied onto the user's problems and solutions. */
+export async function updateProfile(profile: Profile, input: ProfileInput) {
+  const uid = me().uid
+  const batch = writeBatch(db)
+  batch.update(doc(db, 'users', uid), { ...input })
+  syncCommunity(batch, uid, input)
+  bumpStats(batch, profile, input)
+  await batch.commit()
+  if (input.name !== profile.name || input.photo !== profile.photo) {
+    // Blocked users can't edit their posts; the profile itself is still saved.
+    await relabelContent(uid, { authorName: input.name, authorPhoto: input.photo }).catch((err) => console.error(err))
+  }
 }
 
 export async function postIssue(
@@ -97,7 +136,10 @@ export async function toggleIssueVote(issueId: string, voted: boolean) {
 export async function toggleBuilder(profile: Profile, issueId: string, building: boolean) {
   const uid = me().uid
   const batch = writeBatch(db)
-  if (!building && profile.role === 'user') batch.update(doc(db, 'users', uid), { role: 'both' })
+  if (!building && profile.role === 'user') {
+    batch.update(doc(db, 'users', uid), { role: 'both' })
+    bumpStats(batch, profile, { ...profile, role: 'both' })
+  }
   const ref = doc(db, 'issues', issueId, 'builders', uid)
   if (building) batch.delete(ref)
   else batch.set(ref, { uid, issueId, createdAt: serverTimestamp() })
@@ -193,56 +235,66 @@ export async function report(coll: Reportable, id: string, authorId: string) {
   track('report', { target: coll })
 }
 
-const DELETED = 'Deleted user'
-
-/**
- * GDPR delete. Order matters for the rules:
- * 1. fresh Google sign-in (Firebase requires it to delete an account),
- * 2. blank the profile (it is never deleted: that would reset the posting limits),
- * 3. relabel authored content to match the blanked profile,
- * 4. drop "I'm building this" claims (keeps counters right),
- * 5. delete the Auth account.
- * Votes stay as anonymous counts; their docs only hold the (now orphaned) uid.
- */
-export async function deleteAccount() {
-  const user = me()
-  await reauthenticateWithPopup(user, new GoogleAuthProvider())
-  await updateDoc(doc(db, 'users', user.uid), {
-    name: DELETED,
-    photo: '',
-    country: '',
-    stack: [],
-    link: '',
-    source: '',
-  })
-
-  // Lists are capped at 50 per request by the rules, so page through.
-  async function eachPage(q: (cursor?: QueryDocumentSnapshot) => Query, fn: (docs: QueryDocumentSnapshot[]) => Promise<void>) {
-    let cursor: QueryDocumentSnapshot | undefined
-    for (;;) {
-      const page = await getDocs(q(cursor))
-      if (page.empty) return
-      await fn(page.docs)
-      cursor = page.docs.at(-1)
-    }
+// Lists are capped at 50 per request by the rules, so page through.
+async function eachPage(q: (cursor?: QueryDocumentSnapshot) => Query, fn: (docs: QueryDocumentSnapshot[]) => Promise<void>) {
+  let cursor: QueryDocumentSnapshot | undefined
+  for (;;) {
+    const page = await getDocs(q(cursor))
+    if (page.empty) return
+    await fn(page.docs)
+    cursor = page.docs.at(-1)
   }
+}
+
+/** Rewrites the author label on everything this user posted. */
+async function relabelContent(uid: string, label: { authorName: string; authorPhoto: string }) {
   for (const path of ['issues', 'solutions']) {
     await eachPage(
       (cursor) =>
         query(
           collection(db, path),
-          where('authorId', '==', user.uid),
+          where('authorId', '==', uid),
           orderBy('createdAt', 'desc'),
           ...(cursor ? [startAfter(cursor)] : []),
           limit(50),
         ),
       async (docs) => {
         const batch = writeBatch(db)
-        docs.forEach((d) => batch.update(d.ref, { authorName: DELETED, authorPhoto: '' }))
+        docs.forEach((d) => batch.update(d.ref, label))
         await batch.commit()
       },
     )
   }
+}
+
+/**
+ * GDPR delete. Order matters for the rules:
+ * 1. fresh sign-in (Firebase requires it to delete an account): Google popup, or the password again,
+ * 2. blank the profile (it is never deleted: that would reset the posting limits) and leave the community,
+ * 3. relabel authored content to match the blanked profile,
+ * 4. drop "I'm building this" claims (keeps counters right),
+ * 5. delete the Auth account.
+ * Votes stay as anonymous counts; their docs only hold the (now orphaned) uid.
+ */
+export async function deleteAccount(profile: Profile, password?: string) {
+  const user = me()
+  if (password !== undefined) await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email ?? '', password))
+  else await reauthenticateWithPopup(user, new GoogleAuthProvider())
+  const blank = writeBatch(db)
+  bumpStats(blank, profile, { ...profile, name: DELETED })
+  blank.update(doc(db, 'users', user.uid), {
+    name: DELETED,
+    photo: '',
+    country: '',
+    stack: [],
+    link: '',
+    source: '',
+    public: false,
+  })
+  blank.delete(doc(db, 'community', user.uid))
+  await blank.commit()
+
+  await relabelContent(user.uid, { authorName: DELETED, authorPhoto: '' })
   const claims = await getDocs(query(collectionGroup(db, 'builders'), where('uid', '==', user.uid)))
   for (const claim of claims.docs) {
     const batch = writeBatch(db)

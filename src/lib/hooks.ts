@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 
 import { useAuth } from '@/lib/auth'
 import { db } from '@/lib/firebase'
-import type { Category, Issue, Solution } from '@/lib/types'
+import type { Category, CommunityMember, Issue, Solution } from '@/lib/types'
 
 export type Sort = 'top' | 'new'
 
@@ -139,6 +139,26 @@ export function useMyIssues(uid: string | undefined) {
     'issues',
     [],
   )
+}
+
+/** Builders who opted in to be shown on the landing page, most recently active first. */
+export function useCommunity(max = 40) {
+  return useQuery<CommunityMember>(`community:${max}`, () => [orderBy('updatedAt', 'desc'), limit(max)], 'community', [])
+}
+
+/** Public counters from `stats/global` (null until loaded or if missing). */
+export function useStats() {
+  const [stats, setStats] = useState<{ users: number; builders: number } | null>(null)
+  useEffect(
+    () =>
+      onSnapshot(
+        doc(db, 'stats', 'global'),
+        (snap) => setStats(snap.exists() ? { users: snap.get('users') ?? 0, builders: snap.get('builders') ?? 0 } : null),
+        (err) => console.error('stats', err),
+      ),
+    [],
+  )
+  return stats
 }
 
 export function useSolutions(issueId: string) {

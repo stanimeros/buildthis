@@ -11,6 +11,8 @@ import { Spinner } from '@/components/spinner'
 import { Button } from '@/components/ui/button'
 import { CountrySelect } from '@/components/place'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { currentLanguage } from '@/i18n'
 import { useAuth } from '@/lib/auth'
 import { createProfile, isReservedName } from '@/lib/data'
@@ -59,6 +61,22 @@ export function RolePicker({ value, onChange }: { value: Role | null; onChange: 
   )
 }
 
+/** Builders can opt in to show their avatar on the landing page. */
+export function PublicToggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  const { t } = useTranslation()
+  return (
+    <div className="flex items-start justify-between gap-4 rounded-2xl border bg-card p-4">
+      <div className="space-y-1">
+        <Label htmlFor="public" className="font-bold">
+          {t('onboarding.public')}
+        </Label>
+        <p className="text-sm text-muted-foreground">{t('onboarding.publicBody')}</p>
+      </div>
+      <Switch id="public" checked={value} onCheckedChange={onChange} className="mt-1" />
+    </div>
+  )
+}
+
 /** The two onboarding steps. Saving creates the profile; the auth store then has a profile. */
 export function OnboardingForm() {
   const { t } = useTranslation()
@@ -69,6 +87,7 @@ export function OnboardingForm() {
   const [country, setCountry] = useState(guessCountry)
   const [stack, setStack] = useState<string[]>([])
   const [link, setLink] = useState('')
+  const [isPublic, setPublic] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const builder = role === 'builder' || role === 'both'
@@ -88,6 +107,7 @@ export function OnboardingForm() {
           stack: builder ? stack : [],
           link: builder ? link.trim() : '',
           lang: currentLanguage(),
+          public: builder && isPublic,
         },
         getSource(),
       )
@@ -159,6 +179,7 @@ export function OnboardingForm() {
                       aria-invalid={!linkOk}
                     />
                   </Field>
+                  <PublicToggle value={isPublic} onChange={setPublic} />
                 </>
               )}
               <div className="flex gap-3">

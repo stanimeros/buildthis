@@ -58,6 +58,15 @@
     "postTitle": "What problem do you want solved?",
     "postCta": "Post it now"
   },
+  "community": {
+    "kicker": "Community",
+    "title": "Join the people already here",
+    "counts": "{{users}} so far, including {{builders}}.",
+    "users_one": "{{count}} member",
+    "users_other": "{{count}} members",
+    "builders_one": "{{count}} builder",
+    "builders_other": "{{count}} builders"
+  },
   "categories": {
     "all": "All",
     "productivity": "Productivity",
@@ -164,7 +173,30 @@
     "google": "Continue with Google",
     "error": "Sign-in failed. Please try again.",
     "terms": "By continuing you agree to let us store your name and email to run your account.",
-    "prompt": "Sign in to continue"
+    "prompt": "Sign in to continue",
+    "or": "or",
+    "email": "Email",
+    "password": "Password",
+    "passwordHint": "At least {{n}} characters.",
+    "signIn": "Sign in",
+    "signUp": "Create account",
+    "noAccount": "New here? Create an account",
+    "haveAccount": "Already have an account? Sign in",
+    "forgot": "Forgot password?",
+    "emailFirst": "Type your email above first.",
+    "resetSent": "If {{email}} has an account, we sent a link to reset the password.",
+    "wrongPassword": "Wrong email or password.",
+    "invalidEmail": "That email doesn't look right.",
+    "emailInUse": "There's already an account with this email. Sign in instead.",
+    "weakPassword": "Choose a longer password.",
+    "tooMany": "Too many tries. Wait a bit and try again.",
+    "verifyTitle": "Check your email",
+    "verifyBody": "We sent a link to {{email}}. Open it to confirm your address, then come back here.",
+    "verifyDone": "I opened the link",
+    "verifyResend": "Send the email again",
+    "verifySent": "Email sent. Check your spam folder too.",
+    "notVerified": "Not confirmed yet. Open the link in the email first.",
+    "otherAccount": "Use another account"
   },
   "onboarding": {
     "step": "Step {{n}} of 2",
@@ -187,7 +219,9 @@
     "saving": "Saving…",
     "error": "Couldn't save. Please try again.",
     "nameReserved": "That name is reserved. Pick another one.",
-    "welcome": "Welcome, {{name}}!"
+    "welcome": "Welcome, {{name}}!",
+    "public": "Show me on the homepage",
+    "publicBody": "Your photo and name appear with the other builders on BuildThis. You can turn this off anytime."
   },
   "me": {
     "title": "My account",
@@ -204,7 +238,11 @@
     "danger": "Delete account",
     "dangerBody": "Removes your profile and sign-in. Your problems and solutions stay, shown as \"Deleted user\".",
     "deleteConfirm": "Delete your account? This can't be undone.",
-    "deleted": "Your account was deleted."
+    "deleted": "Your account was deleted.",
+    "photo": "Photo",
+    "photoHint": "Shown next to your name on your problems and solutions.",
+    "photoRemove": "Remove photo",
+    "photoGoogle": "Use my Google photo"
   },
   "common": {
     "loading": "Loading…",

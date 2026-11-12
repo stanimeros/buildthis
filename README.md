@@ -49,7 +49,7 @@ Google sign-in works in the emulator: the popup lets you create a fake account.
 - One solution per user per problem; builders only; the problem must be claimed at least 1 hour earlier.
 - Limits: 10 min between problems, 2 min between solutions, max 5 problems / 3 solutions per UTC day,
   one create per batch. The user doc that holds these is never deletable from the client.
-- Lists are paged (max 50 per request). Google sign-in only. Avatars only from Google.
+- Lists are paged (max 50 per request). Sign-in: Google, or email + password with a verified address. Avatars only from Google.
 - App Check (reCAPTCHA Enterprise) proves requests come from this site. After deploying, turn on
   enforcement for Firestore in the Firebase console (App Check → APIs).
 
@@ -57,6 +57,9 @@ Google sign-in works in the emulator: the popup lets you create a fake account.
 
 `node scripts/seed.mjs` adds a dozen example problems (posted by BuildThis, 0 votes) to the emulator;
 `--prod` writes them to production with your `gcloud` login.
+
+`node scripts/stats.mjs [--prod]` recounts the public member / builder counters (`stats/global`) from
+the user docs. The app keeps them in step after that; rerun it only to fix drift.
 
 ## Tests
 

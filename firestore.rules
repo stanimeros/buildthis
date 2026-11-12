@@ -4,9 +4,13 @@ service cloud.firestore {
 
     // ---------- helpers ----------
 
-    // Google accounts only, so enabling another provider later can't open vote farming.
+    // Google, or email + password once the address is verified: an unverified throwaway address
+    // can't vote or post. Any other provider enabled later stays locked out until added here.
     function signedIn() {
-      return request.auth != null && request.auth.token.firebase.sign_in_provider == 'google.com';
+      return request.auth != null
+        && (request.auth.token.firebase.sign_in_provider == 'google.com'
+            || (request.auth.token.firebase.sign_in_provider == 'password'
+                && request.auth.token.email_verified == true));
     }
 
     function isMe(uid) {
@@ -184,6 +188,10 @@ service cloud.firestore {
       return 2;
     }
 
+    function communityPath(uid) {
+      return /databases/$(database)/documents/community/$(uid);
+    }
+
     function strikesPath(uid) {
       return /databases/$(database)/documents/strikes/$(uid);
     }
@@ -207,7 +215,7 @@ service cloud.firestore {
       return d.keys().hasOnly(['name', 'photo', 'role', 'country', 'stack', 'link', 'lang', 'source',
                                'lastIssueAt', 'lastSolutionAt', 'onboardedAt', 'createdAt',
                                'issuesDay', 'issuesToday', 'solutionsDay', 'solutionsToday',
-                               'lastIssueId', 'lastSolutionId'])
+                               'lastIssueId', 'lastSolutionId', 'public'])
         && str(d.name, 1, 60)
         && !reservedName(d.name)
         && validPhoto(d.photo)
@@ -217,13 +225,74 @@ service cloud.firestore {
         && str(d.link, 0, 200)
         && d.lang in ['en', 'el']
         && str(d.source, 0, 200)
+        // Only builders can be listed on the landing page.
+        && d.get('public', false) is bool
+        && (d.get('public', false) == false || d.role in ['builder', 'both'])
         && d.onboardedAt is timestamp;
+    }
+
+    // ---------- public counters ----------
+    // `stats/global` holds { users, builders }. Every batch that changes whether someone counts
+    // (signup, role change, account deletion) must move the counters by exactly that change.
+
+    function statsPath() {
+      return /databases/$(database)/documents/stats/global;
+    }
+
+    function counted(d) {
+      return d.get('name', 'Deleted user') != 'Deleted user';
+    }
+
+    function building(d) {
+      return counted(d) && d.get('role', 'user') in ['builder', 'both'];
+    }
+
+    // +1 / 0 / -1 for this batch.
+    function userDelta(uid) {
+      let had = exists(userPath(uid)) && counted(get(userPath(uid)).data);
+      let has = existsAfter(userPath(uid)) && counted(getAfter(userPath(uid)).data);
+      return (has ? 1 : 0) - (had ? 1 : 0);
+    }
+
+    function builderDelta(uid) {
+      let had = exists(userPath(uid)) && building(get(userPath(uid)).data);
+      let has = existsAfter(userPath(uid)) && building(getAfter(userPath(uid)).data);
+      return (has ? 1 : 0) - (had ? 1 : 0);
+    }
+
+    function statBefore(field) {
+      return exists(statsPath()) ? get(statsPath()).data.get(field, 0) : 0;
+    }
+
+    function statAfter(field) {
+      return existsAfter(statsPath()) ? getAfter(statsPath()).data.get(field, 0) : 0;
+    }
+
+    function statsInStep(uid) {
+      return statAfter('users') == statBefore('users') + userDelta(uid)
+        && statAfter('builders') == statBefore('builders') + builderDelta(uid);
+    }
+
+    match /stats/{docId} {
+      allow get: if true;
+      allow create, update: if docId == 'global'
+        && request.resource.data.keys().hasOnly(['users', 'builders'])
+        && (isAdmin()
+            || (signedIn() && statsInStep(request.auth.uid)
+                && (userDelta(request.auth.uid) != 0 || builderDelta(request.auth.uid) != 0)));
+    }
+
+    // Not public (any more) means no community doc after this batch.
+    function optOutRemovesCommunity(uid) {
+      return request.resource.data.get('public', false) == true || !existsAfter(communityPath(uid));
     }
 
     match /users/{uid} {
       allow read: if isMe(uid);
       allow create: if isMe(uid)
         && validProfile(request.resource.data)
+        && optOutRemovesCommunity(uid)
+        && statsInStep(uid)
         && request.resource.data.createdAt == request.time
         && request.resource.data.onboardedAt == request.time
         && !('lastIssueAt' in request.resource.data)
@@ -232,6 +301,8 @@ service cloud.firestore {
                                                  'lastIssueId', 'lastSolutionId']);
       allow update: if isMe(uid)
         && validProfile(request.resource.data)
+        && optOutRemovesCommunity(uid)
+        && statsInStep(uid)
         && !changed().hasAny(['createdAt', 'onboardedAt'])
         // `source` is fixed, except blanked when the account is deleted.
         && (!changed().hasAny(['source']) || request.resource.data.source == '')
@@ -246,6 +317,19 @@ service cloud.firestore {
       // Never deleted from the client: deleting and recreating it would reset the limits.
       // Account deletion blanks the personal fields instead (src/lib/data.ts deleteAccount).
       allow delete: if false;
+    }
+
+    // Builders who opted in to be shown on the landing page: name + photo copied from their profile.
+    match /community/{uid} {
+      allow get: if true;
+      allow list: if smallPage();
+      allow create, update: if isMe(uid) && inGoodStanding()
+        && request.resource.data.keys().hasOnly(['name', 'photo', 'updatedAt'])
+        && request.resource.data.updatedAt == request.time
+        && getAfter(userPath(uid)).data.get('public', false) == true
+        && request.resource.data.name == getAfter(userPath(uid)).data.name
+        && request.resource.data.photo == getAfter(userPath(uid)).data.photo;
+      allow delete: if isMe(uid) || isAdmin();
     }
 
     match /strikes/{uid} {
