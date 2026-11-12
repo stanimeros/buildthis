@@ -27,12 +27,12 @@ beforeEach(() => env.clearFirestore())
 const db = (uid) => (uid ? env.authenticatedContext(uid) : env.unauthenticatedContext()).firestore()
 
 const profile = (extra = {}) => ({
-  name: 'Alice', photo: '', role: 'both', country: 'GR', city: 'Athens', stack: ['web'], link: '', lang: 'en',
+  name: 'Alice', photo: '', role: 'both', country: 'GR', stack: ['web'], link: '', lang: 'en',
   source: 'direct', onboardedAt: serverTimestamp(), createdAt: serverTimestamp(), ...extra,
 })
 
 const issue = (uid, extra = {}) => ({
-  title: 'An app to split bills', body: 'Details', category: 'finance', country: '', city: '',
+  title: 'An app to split bills', body: 'Details', category: 'finance', country: '',
   authorId: uid, authorName: 'Alice', authorPhoto: '', votes: 0, builders: 0, solutions: 0,
   createdAt: serverTimestamp(), ...extra,
 })
@@ -131,13 +131,13 @@ describe('issues', () => {
     await seedUser('a')
     await assertFails(postIssue('a', issue('a'), {}))
   })
-  test('scoped to a country + city', async () => {
+  test('scoped to a country', async () => {
     await seedUser('a')
-    await assertSucceeds(postIssue('a', issue('a', { country: 'GR', city: 'Athens' })))
+    await assertSucceeds(postIssue('a', issue('a', { country: 'GR' })))
   })
-  test('city without a country rejected', async () => {
+  test('city field not allowed', async () => {
     await seedUser('a')
-    await assertFails(postIssue('a', issue('a', { city: 'Athens' })))
+    await assertFails(postIssue('a', issue('a', { country: 'GR', city: 'Athens' })))
   })
   test('bad country code rejected', async () => {
     await seedUser('a')

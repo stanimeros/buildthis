@@ -8,7 +8,7 @@
   },
   "hero": {
     "title": "Stop guessing <hl>what to build.</hl>",
-    "subtitle": "Post the app you wish existed. Upvote the ones you'd use. Builders ship the winners.",
+    "subtitle": "Post a problem you want solved. Upvote the ones you have too. Builders solve the most wanted.",
     "ctaProblem": "Post a problem"
   },
   "how": {
@@ -55,7 +55,7 @@
     "builderTitle": "Builders: skip the guessing.",
     "builderBody": "Pick a problem people already asked for, ship it, and get your first users on day one.",
     "builderCta": "Find something to build",
-    "postTitle": "What app do you wish existed?",
+    "postTitle": "What problem do you want solved?",
     "postCta": "Post it now"
   },
   "categories": {
@@ -82,7 +82,7 @@
   },
   "issues": {
     "title": "Problems",
-    "subtitle": "Upvote the ones you'd use. Builders are watching.",
+    "subtitle": "Upvote the ones you have too. Builders are watching.",
     "top": "Top",
     "new": "New",
     "empty": "No problems here yet.",
@@ -113,7 +113,7 @@
   "newIssue": {
     "title": "Post a problem",
     "editTitle": "Edit your problem",
-    "subtitle": "Describe the app you wish existed. Keep it about the problem, not the solution.",
+    "subtitle": "Describe the problem you want solved. Focus on what bugs you, not the solution.",
     "fieldTitle": "Title",
     "titlePlaceholder": "I want an app that…",
     "fieldBody": "Details",
@@ -165,11 +165,11 @@
     "step": "Step {{n}} of 2",
     "q1": "What brings you here?",
     "roleUser": "I have problems",
-    "roleUserBody": "I want apps that solve them.",
+    "roleUserBody": "I want them solved.",
     "roleBuilder": "I build things",
     "roleBuilderBody": "I want to know what to build.",
     "roleBoth": "Both",
-    "roleBothBody": "I have ideas and I ship.",
+    "roleBothBody": "I post problems and ship solutions.",
     "q2": "About you",
     "name": "Display name",
     "country": "Country",
@@ -180,9 +180,7 @@
     "next": "Continue",
     "finish": "Let's go",
     "saving": "Saving…",
-    "error": "Couldn't save. Please try again.",
-    "city": "City",
-    "cityPlaceholder": "e.g. Athens (optional)"
+    "error": "Couldn't save. Please try again."
   },
   "me": {
     "title": "My account",
@@ -216,8 +214,6 @@
     "specific": "A specific place",
     "country": "Country",
     "chooseCountry": "Choose a country",
-    "city": "City",
-    "cityPlaceholder": "e.g. Athens (optional)",
     "all": "All places",
     "filterLabel": "Filter by place",
     "countryRequired": "Choose a country, or pick Anywhere.",

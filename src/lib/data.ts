@@ -18,7 +18,6 @@ export interface ProfileInput {
   name: string
   role: Role
   country: string
-  city: string
   stack: string[]
   link: string
   lang: 'en' | 'el'

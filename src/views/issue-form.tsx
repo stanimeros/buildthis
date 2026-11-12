@@ -41,7 +41,6 @@ function IssueForm({
   const [category, setCategory] = useState<Category>(initial?.category ?? 'productivity')
   const [scoped, setScoped] = useState(!!initial?.country)
   const [country, setCountry] = useState(initial?.country || profile?.country || '')
-  const [city, setCity] = useState(initial?.country ? initial.city : (profile?.city ?? ''))
   const [countryError, setCountryError] = useState(false)
   const [sending, setSending] = useState(false)
   const [titleError, setTitleError] = useState(false)
@@ -60,7 +59,6 @@ function IssueForm({
       body: body.trim(),
       category,
       country: scoped ? country : '',
-      city: scoped ? city.trim().slice(0, limits.city[1]) : '',
     }
     const [min, max] = limits.issueTitle
     if (clean.title.length < min || clean.title.length > max) {
@@ -141,26 +139,15 @@ function IssueForm({
             />
           </Field>
           {scoped && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field id="country" label={t('place.country')} error={countryError ? t('place.countryRequired') : null}>
-                <CountrySelect
-                  id="country"
-                  value={country}
-                  onChange={setCountry}
-                  placeholder={t('place.chooseCountry')}
-                  invalid={countryError}
-                />
-              </Field>
-              <Field id="city" label={t('place.city')}>
-                <Input
-                  id="city"
-                  value={city}
-                  maxLength={limits.city[1]}
-                  placeholder={t('place.cityPlaceholder')}
-                  onChange={(e) => setCity(e.target.value)}
-                />
-              </Field>
-            </div>
+            <Field id="country" label={t('place.country')} error={countryError ? t('place.countryRequired') : null}>
+              <CountrySelect
+                id="country"
+                value={country}
+                onChange={setCountry}
+                placeholder={t('place.chooseCountry')}
+                invalid={countryError}
+              />
+            </Field>
           )}
           <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}>
             <Button type="submit" size="lg" variant="flame" className="group w-full" disabled={sending}>

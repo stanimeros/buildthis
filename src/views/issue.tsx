@@ -10,7 +10,7 @@ import { toast } from 'sonner'
 
 import { Avatar } from '@/components/avatar'
 import { useConfirm } from '@/components/confirm'
-import { PlaceChip } from '@/components/place'
+import { CategoryBadge, PlaceBadge } from '@/components/badges'
 import { useRequireSignIn } from '@/components/require-auth'
 import { Spinner } from '@/components/spinner'
 import { Button } from '@/components/ui/button'
@@ -223,19 +223,21 @@ export function IssuePage() {
             <h1 className="text-2xl leading-tight font-extrabold tracking-tight break-words sm:text-4xl">
               {issue.title}
             </h1>
-            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm font-semibold text-muted-foreground">
-              <Link
-                to={`/?category=${issue.category}`}
-                className="rounded-full bg-muted px-3 py-1 hover:bg-secondary"
-              >
-                {t(`categories.${issue.category}`)}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link to={`/?category=${issue.category}#board`} className="rounded-full transition hover:brightness-95">
+                <CategoryBadge category={issue.category} size="md" />
               </Link>
-              <PlaceChip country={issue.country} city={issue.city} className="px-3" />
-              <span className="inline-flex items-center gap-1.5">
-                <Avatar name={issue.authorName} photo={issue.authorPhoto} className="size-5" />
-                {t('issue.by', { name: issue.authorName })} · {timeAgo(issue.createdAt)}
-              </span>
+              <Link
+                to={issue.country ? `/?country=${issue.country}#board` : '/#board'}
+                className="rounded-full transition hover:brightness-95"
+              >
+                <PlaceBadge country={issue.country} size="md" />
+              </Link>
             </div>
+            <p className="mt-3 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+              <Avatar name={issue.authorName} photo={issue.authorPhoto} className="size-5" />
+              {t('issue.by', { name: issue.authorName })} · {timeAgo(issue.createdAt)}
+            </p>
           </div>
         </div>
 

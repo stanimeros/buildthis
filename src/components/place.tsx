@@ -7,21 +7,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { countryName, countryOptions, flag } from '@/lib/countries'
 import { cn } from '@/lib/utils'
 
-/** Location badge: "🇬🇷 Athens", "🇬🇷 Greece", or "🌍 Anywhere". */
-export function PlaceChip({ country, city, className }: { country: string; city?: string; className?: string }) {
-  const { t, i18n } = useTranslation()
-  const name = country ? countryName(country, i18n.language) : t('place.anywhere')
-  return (
-    <span
-      className={cn('inline-flex items-center gap-1 rounded-full bg-sky/40 px-2.5 py-1', className)}
-      title={city ? `${city}, ${name}` : name}
-    >
-      {country ? <span aria-hidden>{flag(country)}</span> : <GlobeHemisphereEastIcon weight="duotone" className="size-3.5" />}
-      {city || name}
-    </span>
-  )
-}
-
 /** Searchable country picker (shadcn combobox). Names in the UI language, Greece & Cyprus first. */
 export function CountrySelect({
   id,
@@ -72,14 +57,14 @@ export function CountrySelect({
             'flex items-center gap-2 border bg-background text-left outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive',
             pill
               ? cn(
-                  'h-9 rounded-full px-3.5 text-sm font-semibold',
+                  'h-10 rounded-full px-3.5 text-sm font-semibold',
                   value ? 'border-ink bg-ink text-background' : 'hover:border-ink/30',
                 )
               : 'h-12 w-full rounded-xl border-input px-4 text-base md:text-sm',
             className,
           )}
         >
-          {pill && !value && <MapPinIcon weight="duotone" className="size-4 shrink-0" />}
+          {pill && !value && <MapPinIcon weight="duotone" className="hidden size-4 shrink-0 sm:block" />}
           {selected ? (
             <>
               <span aria-hidden>{flag(selected.code)}</span>

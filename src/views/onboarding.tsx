@@ -69,7 +69,6 @@ export function OnboardingPage() {
   const [role, setRole] = useState<Role | null>(null)
   const [name, setName] = useState(() => user?.displayName ?? user?.email?.split('@')[0] ?? '')
   const [country, setCountry] = useState(guessCountry)
-  const [city, setCity] = useState('')
   const [stack, setStack] = useState<string[]>([])
   const [link, setLink] = useState('')
   const [saving, setSaving] = useState(false)
@@ -92,7 +91,6 @@ export function OnboardingPage() {
           name: name.trim(),
           role,
           country,
-          city: city.trim().slice(0, 60),
           stack: builder ? stack : [],
           link: builder ? link.trim() : '',
           lang: currentLanguage(),
@@ -143,25 +141,9 @@ export function OnboardingPage() {
                 <Field id="name" label={t('onboarding.name')}>
                   <Input id="name" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} />
                 </Field>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field id="country" label={t('onboarding.country')}>
-                    <CountrySelect
-                      id="country"
-                      value={country}
-                      onChange={setCountry}
-                      placeholder={t('place.chooseCountry')}
-                    />
-                  </Field>
-                  <Field id="city" label={t('onboarding.city')}>
-                    <Input
-                      id="city"
-                      value={city}
-                      maxLength={60}
-                      placeholder={t('onboarding.cityPlaceholder')}
-                      onChange={(e) => setCity(e.target.value)}
-                    />
-                  </Field>
-                </div>
+                <Field id="country" label={t('onboarding.country')}>
+                  <CountrySelect id="country" value={country} onChange={setCountry} placeholder={t('place.chooseCountry')} />
+                </Field>
                 {builder && (
                   <>
                     <Field label={t('onboarding.stack')}>

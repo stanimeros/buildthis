@@ -6,7 +6,7 @@ export default function HeaderIsland() {
   return (
     <Island ssr>
       <Header />
-      <Toaster position="bottom-center" />
+      <Toaster position="bottom-right" />
     </Island>
   )
 }

@@ -32,7 +32,6 @@ function ProfileForm({ profile }: { profile: Profile }) {
   const [role, setRole] = useState(profile.role)
   // Older profiles stored free text here; only keep it if it's a country code.
   const [country, setCountry] = useState(isCountry(profile.country) ? profile.country : '')
-  const [city, setCity] = useState(profile.city ?? '')
   const [stack, setStack] = useState(profile.stack)
   const [link, setLink] = useState(profile.link)
   const [saving, setSaving] = useState(false)
@@ -49,7 +48,6 @@ function ProfileForm({ profile }: { profile: Profile }) {
         name: name.trim(),
         role,
         country,
-        city: city.trim(),
         stack: builder ? stack : [],
         link: builder ? link.trim() : '',
         lang: currentLanguage(),
@@ -71,20 +69,9 @@ function ProfileForm({ profile }: { profile: Profile }) {
       <Field label={t('me.role')}>
         <RolePicker value={role} onChange={setRole} />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field id="country" label={t('onboarding.country')}>
-          <CountrySelect id="country" value={country} onChange={setCountry} placeholder={t('place.chooseCountry')} />
-        </Field>
-        <Field id="city" label={t('onboarding.city')}>
-          <Input
-            id="city"
-            value={city}
-            maxLength={60}
-            placeholder={t('onboarding.cityPlaceholder')}
-            onChange={(e) => setCity(e.target.value)}
-          />
-        </Field>
-      </div>
+      <Field id="country" label={t('onboarding.country')}>
+        <CountrySelect id="country" value={country} onChange={setCountry} placeholder={t('place.chooseCountry')} />
+      </Field>
       {builder && (
         <>
           <Field label={t('onboarding.stack')}>

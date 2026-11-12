@@ -1,4 +1,6 @@
 ---
+// Sonner injects its CSS into <head> at runtime, which <ClientRouter /> swaps out on navigation.
+import 'sonner/dist/styles.css'
 import '@/index.css'
 
 import { ClientRouter } from 'astro:transitions'

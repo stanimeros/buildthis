@@ -90,6 +90,11 @@
   }
 }
 
+/* Toasts in the theme font. */
+[data-sonner-toaster] {
+    font-family: var(--font-sans);
+}
+
 /* Faint dotted grid behind the hero. */
 .bg-dots {
     background-image: radial-gradient(oklch(0.18 0.01 60 / 0.12) 1px, transparent 1px);

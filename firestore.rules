@@ -38,11 +38,6 @@ service cloud.firestore {
       return c is string && (c == '' || c.matches('^[A-Z]{2}$'));
     }
 
-    // Problem scope: anywhere (no city), or a country with an optional city.
-    function validPlace(d) {
-      return validCountry(d.country) && str(d.city, 0, 60) && (d.country != '' || d.city == '');
-    }
-
     function changed() {
       return request.resource.data.diff(resource.data).affectedKeys();
     }
@@ -102,14 +97,13 @@ service cloud.firestore {
     // ---------- users ----------
 
     function validProfile(d) {
-      return d.keys().hasOnly(['name', 'photo', 'role', 'country', 'city', 'stack', 'link', 'lang', 'source',
+      return d.keys().hasOnly(['name', 'photo', 'role', 'country', 'stack', 'link', 'lang', 'source',
                                'lastIssueAt', 'lastSolutionAt', 'onboardedAt', 'createdAt',
                                'issuesDay', 'issuesToday', 'solutionsDay', 'solutionsToday'])
         && str(d.name, 1, 60)
         && str(d.photo, 0, 500)
         && d.role in ['user', 'builder', 'both']
         && validCountry(d.country)
-        && str(d.get('city', ''), 0, 60)
         && d.stack is list && d.stack.size() <= 10
         && str(d.link, 0, 200)
         && d.lang in ['en', 'el']
@@ -148,7 +142,7 @@ service cloud.firestore {
       return str(d.title, 8, 120)
         && str(d.body, 0, 2000)
         && d.category in categories()
-        && validPlace(d)
+        && validCountry(d.country)
         && str(d.authorName, 1, 60)
         && str(d.authorPhoto, 0, 500);
     }
@@ -158,7 +152,7 @@ service cloud.firestore {
       allow list: if smallPage();
 
       allow create: if onboarded()
-        && request.resource.data.keys().hasOnly(['title', 'body', 'category', 'country', 'city', 'authorId',
+        && request.resource.data.keys().hasOnly(['title', 'body', 'category', 'country', 'authorId',
                                                  'authorName', 'authorPhoto', 'votes', 'builders',
                                                  'solutions', 'createdAt'])
         && validIssueContent(request.resource.data)
@@ -173,7 +167,7 @@ service cloud.firestore {
       allow update: if
         // Author edits content.
         (isMe(resource.data.authorId)
-          && changed().hasOnly(['title', 'body', 'category', 'country', 'city', 'authorName', 'authorPhoto'])
+          && changed().hasOnly(['title', 'body', 'category', 'country', 'authorName', 'authorPhoto'])
           && validIssueContent(request.resource.data))
         // Vote / unvote, together with the vote doc.
         || (signedIn() && bumped('votes', 1)

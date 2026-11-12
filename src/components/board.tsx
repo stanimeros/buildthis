@@ -2,6 +2,7 @@ import { ClockIcon, FireIcon, PlusIcon } from '@phosphor-icons/react'
 import { motion } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 
+import { categoryIcons } from '@/components/badges'
 import { ExampleIssues } from '@/components/example-issues'
 import { IssueCard } from '@/components/issue-card'
 import { CountrySelect } from '@/components/place'
@@ -33,12 +34,12 @@ export function Board() {
 
   return (
     <section id="board" className="mx-auto max-w-3xl scroll-mt-24 px-4">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{t('issues.title')}</h2>
-          <p className="mt-1 text-muted-foreground">{t('issues.subtitle')}</p>
-        </div>
-        <div role="tablist" className="flex rounded-full bg-muted p-1">
+      <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{t('issues.title')}</h2>
+      <p className="mt-1 text-muted-foreground">{t('issues.subtitle')}</p>
+
+      {/* Sort + place on one row; categories below. */}
+      <div className="mt-6 flex items-center gap-2">
+        <div role="tablist" className="flex h-10 shrink-0 rounded-full bg-muted p-1">
           {(['top', 'new'] as const).map((s) => (
             <button
               key={s}
@@ -46,7 +47,7 @@ export function Board() {
               aria-selected={sort === s}
               onClick={() => set('sort', s === 'top' ? null : s)}
               className={cn(
-                'relative flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-bold transition-colors',
+                'relative flex items-center gap-1.5 rounded-full px-3 text-sm font-bold transition-colors sm:px-4',
                 sort === s ? 'text-background' : 'text-muted-foreground hover:text-foreground',
               )}
             >
@@ -60,32 +61,42 @@ export function Board() {
             </button>
           ))}
         </div>
-      </div>
-
-      <div className="mt-5 flex">
         <CountrySelect
           pill
           value={country}
           onChange={(c) => set('country', c || null)}
           placeholder={t('place.all')}
           label={t('place.filterLabel')}
-          className="w-auto"
+          className="ml-auto min-w-0 flex-1 justify-start sm:max-w-56 sm:flex-none"
         />
       </div>
-      <div className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-2 [scrollbar-width:none]">
-        {(['all', ...categories] as const).map((c) => (
-          <button
-            key={c}
-            aria-pressed={category === c}
-            onClick={() => set('category', c === 'all' ? null : c)}
-            className={cn(
-              'shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-semibold whitespace-nowrap transition-colors',
-              category === c ? 'border-ink bg-ink text-background' : 'bg-card hover:border-ink/30',
-            )}
-          >
-            {t(`categories.${c}`)}
-          </button>
-        ))}
+
+      <div
+        className={cn(
+          // Mobile: one swipeable row that fades at the edges. Desktop: wrap so every category shows.
+          '-mx-4 mt-3 flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none]',
+          '[mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%-32px),transparent)]',
+          'sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:[mask-image:none]',
+        )}
+      >
+        {(['all', ...categories] as const).map((c) => {
+          const Icon = categoryIcons[c]
+          const active = category === c
+          return (
+            <button
+              key={c}
+              aria-pressed={active}
+              onClick={() => set('category', c === 'all' ? null : c)}
+              className={cn(
+                'flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm font-semibold whitespace-nowrap transition-colors',
+                active ? 'border-ink bg-ink text-background' : 'bg-card text-foreground/80 hover:border-ink/30',
+              )}
+            >
+              <Icon weight={active ? 'fill' : 'duotone'} className={cn('size-4', active && 'text-lime')} />
+              {t(`categories.${c}`)}
+            </button>
+          )
+        })}
       </div>
 
       <div className="mt-5">

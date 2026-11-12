@@ -17,7 +17,6 @@ export interface Profile {
   role: Role
   /** ISO 3166-1 alpha-2, or '' */
   country: string
-  city?: string
   stack: string[]
   link: string
   lang: 'en' | 'el'
@@ -40,8 +39,6 @@ export interface Issue {
   category: Category
   /** '' = anywhere, else ISO 3166-1 alpha-2 */
   country: string
-  /** only when country is set */
-  city: string
   authorId: string
   authorName: string
   authorPhoto: string
@@ -56,8 +53,8 @@ export interface IssueInput {
   title: string
   body: string
   category: Category
+  /** '' = anywhere */
   country: string
-  city: string
 }
 
 export interface Solution {
@@ -79,5 +76,4 @@ export const limits = {
   solutionTitle: [2, 80],
   solutionBody: [0, 1000],
   name: [1, 60],
-  city: [0, 60],
 } as const
