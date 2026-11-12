@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/lib/auth'
-import { claimWaitLeft, inCooldown, LIMITS, usedToday } from '@/lib/quota'
+import { claimWaitLeft, cooldownLeft, LIMITS, usedToday } from '@/lib/quota'
 import { solutionId, submitSolution, updateSolution } from '@/lib/data'
 import { db } from '@/lib/firebase'
 import { useClaim, useIssue } from '@/lib/hooks'
@@ -110,8 +110,9 @@ function SolutionForm({
       toast.error(t('solution.dailyLimit'))
       return
     }
-    if (!existing && inCooldown(profile?.lastSolutionAt, LIMITS.solutionCooldownMin)) {
-      toast.error(t('solution.cooldown'))
+    const wait = existing ? 0 : cooldownLeft(profile?.lastSolutionAt, LIMITS.solutionCooldownMin)
+    if (wait) {
+      toast.error(t('solution.cooldown', { count: wait }))
       return
     }
     setSending(true)

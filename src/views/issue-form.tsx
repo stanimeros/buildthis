@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/lib/auth'
-import { inCooldown, LIMITS, usedToday } from '@/lib/quota'
+import { cooldownLeft, LIMITS, usedToday } from '@/lib/quota'
 import { postIssue, updateIssue } from '@/lib/data'
 import { useIssue } from '@/lib/hooks'
 import { type Category, categories, type IssueInput, limits } from '@/lib/types'
@@ -79,8 +79,9 @@ function IssueForm({
       toast.error(t('newIssue.dailyLimit'))
       return
     }
-    if (!editing && inCooldown(profile?.lastIssueAt, LIMITS.issueCooldownMin)) {
-      toast.error(t('newIssue.cooldown'))
+    const wait = editing ? 0 : cooldownLeft(profile?.lastIssueAt, LIMITS.issueCooldownMin)
+    if (wait) {
+      toast.error(t('newIssue.cooldown', { count: wait }))
       return
     }
     setSending(true)

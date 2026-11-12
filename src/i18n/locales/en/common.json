@@ -138,10 +138,11 @@
     "submit": "Post problem",
     "save": "Save changes",
     "submitting": "Posting…",
-    "cooldown": "You just posted. You can post again in a few minutes.",
     "error": "Couldn't post. Please try again.",
     "titleLength": "Title must be 8–120 characters.",
-    "dailyLimit": "You've posted 5 problems today. Come back tomorrow."
+    "dailyLimit": "You've posted 5 problems today. Come back tomorrow.",
+    "cooldown_one": "You just posted a problem. You can post again in {{count}} minute.",
+    "cooldown_other": "You just posted a problem. You can post again in {{count}} minutes."
   },
   "solution": {
     "title": "Submit your solution",
@@ -159,7 +160,6 @@
     "save": "Save changes",
     "submitting": "Submitting…",
     "already": "You already submitted a solution to this problem.",
-    "cooldown": "You just submitted a solution. Try again in a couple of minutes.",
     "error": "Couldn't submit. Please try again.",
     "invalidUrl": "Enter a valid https:// link.",
     "nameLength": "Name must be 2–80 characters.",
@@ -168,7 +168,9 @@
     "claimFirstBody": "Tap “I'm building this” on the problem. You can submit your solution an hour later. This keeps out bots that spam every problem.",
     "claimWait": "Almost there",
     "claimWaitBody": "You claimed this problem recently. You can submit your solution in {{minutes}} min.",
-    "backToProblem": "Back to the problem"
+    "backToProblem": "Back to the problem",
+    "cooldown_one": "You just submitted a solution. Try again in {{count}} minute.",
+    "cooldown_other": "You just submitted a solution. Try again in {{count}} minutes."
   },
   "signin": {
     "title": "Sign in to BuildThis",

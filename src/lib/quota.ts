@@ -17,8 +17,10 @@ export function dayKey(date = new Date()) {
   return date.getUTCFullYear() * 10000 + (date.getUTCMonth() + 1) * 100 + date.getUTCDate()
 }
 
-export function inCooldown(last: Timestamp | undefined, minutes: number) {
-  return !!last && Date.now() - last.toMillis() < minutes * 60_000
+/** Whole minutes left before posting again (0 = can post now). */
+export function cooldownLeft(last: Timestamp | undefined, minutes: number) {
+  if (!last) return 0
+  return Math.max(0, Math.ceil((last.toMillis() + minutes * 60_000 - Date.now()) / 60_000))
 }
 
 type Daily = 'issues' | 'solutions'
