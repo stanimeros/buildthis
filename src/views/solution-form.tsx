@@ -130,7 +130,7 @@ function SolutionForm({
     <Page narrow title={t(existing ? 'solution.editTitle' : 'solution.title')} subtitle={t('solution.subtitle')}>
       <Link
         to={`/p/${issueId}`}
-        className="mt-4 inline-block rounded-full bg-muted px-3 py-1 text-sm font-semibold hover:bg-secondary"
+        className="mt-4 inline-block rounded-full border bg-card px-3 py-1 text-sm font-semibold hover:bg-muted"
       >
         {t('solution.forIssue', { title: issueTitle })}
       </Link>

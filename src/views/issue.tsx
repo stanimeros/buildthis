@@ -221,7 +221,7 @@ export function IssuePage() {
       </Link>
 
       {issue.hidden && (
-        <div className="mt-6 flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
+        <div className="mt-6 flex items-start gap-3 rounded-2xl border border-destructive/30 bg-card p-4 text-sm">
           <EyeSlashIcon weight="duotone" className="mt-0.5 size-5 shrink-0 text-destructive" />
           <p>{t('report.hiddenNotice')}</p>
         </div>

@@ -158,7 +158,7 @@ function Lists({ uid }: { uid: string }) {
   return (
     <section className="mt-12">
       <div role="tablist" className="-mx-4 flex gap-1 overflow-x-auto px-4 [scrollbar-width:none]">
-        <div className="flex rounded-full bg-muted p-1">
+        <div className="flex rounded-full border bg-card p-1">
           {tabs.map(({ id, label, count }) => (
             <button
               key={id}
@@ -294,7 +294,7 @@ export function MePage() {
         </div>
       </section>
 
-      <section className="mt-8 rounded-[2rem] border border-destructive/30 bg-destructive/5 p-6 sm:p-8">
+      <section className="mt-8 rounded-[2rem] border border-destructive/30 bg-card p-6 sm:p-8">
         <h2 className="text-xl font-bold text-destructive">{t('me.danger')}</h2>
         <p className="mt-2 text-sm text-muted-foreground">{t('me.dangerBody')}</p>
         <Button variant="destructive" className="mt-4" onClick={remove} loading={deleting}>

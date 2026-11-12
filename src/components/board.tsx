@@ -41,7 +41,7 @@ export function Board() {
 
       {/* Sort + place on one row; categories below. */}
       <div className="mt-6 flex items-center gap-2">
-        <div role="tablist" className="flex h-10 shrink-0 rounded-full bg-muted p-1">
+        <div role="tablist" className="flex h-10 shrink-0 rounded-full border bg-card p-1">
           {(['top', 'new'] as const).map((s) => (
             <button
               key={s}

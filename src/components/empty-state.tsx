@@ -6,9 +6,9 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 const tones = {
-  empty: { box: 'border-dashed border-ink/15 bg-muted/50', tile: 'bg-lime text-ink' },
-  missing: { box: 'border-transparent bg-muted/50', tile: 'bg-primary/10 text-primary' },
-  error: { box: 'border-destructive/30 bg-destructive/5', tile: 'bg-destructive/10 text-destructive' },
+  empty: { box: 'border-dashed border-ink/20 bg-card', tile: 'bg-lime text-ink' },
+  missing: { box: 'bg-card', tile: 'bg-primary/10 text-primary' },
+  error: { box: 'border-destructive/30 bg-card', tile: 'bg-destructive/10 text-destructive' },
 }
 
 /** Empty, not-found and error states: a colored icon tile, a message and an optional action. */

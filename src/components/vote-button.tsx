@@ -52,7 +52,7 @@ export function VoteButton({
       className={cn(
         'flex shrink-0 flex-col items-center gap-0.5 rounded-2xl border font-heading font-bold transition-colors',
         size === 'lg' ? 'w-20 py-3 text-lg' : 'w-16 py-2',
-        voted ? 'border-primary bg-primary text-primary-foreground' : 'bg-background hover:border-ink/30',
+        voted ? 'border-primary bg-primary text-primary-foreground' : 'bg-card hover:border-ink/30',
         pending && 'animate-pulse',
       )}
     >
