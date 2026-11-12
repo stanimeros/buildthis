@@ -89,7 +89,8 @@
     "emptyCta": "Be the first to post one",
     "upvote": "Upvote",
     "removeVote": "Remove vote",
-    "loadMore": "Load more"
+    "loadMore": "Show more",
+    "useFilters": "Use the filters above to find more."
   },
   "issue": {
     "notFound": "This problem doesn't exist (or was removed).",

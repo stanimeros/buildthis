@@ -51,10 +51,12 @@ function useQuery<T>(key: string, build: () => QueryConstraint[] | null, path: s
   return state.key === key ? state : { data: fallback, loading: true, error: null }
 }
 
-const PAGE = 50 // the rules allow at most 50 docs per list request
+const PAGE = 20
+/** "Show more" stops here; past this, filters are the way to find things. */
+const MAX_ITEMS = 200
 
 /**
- * The board feed, paged with cursors: page 1 first, `loadMore()` adds the next 50.
+ * The board feed, paged with cursors: 20 first, `loadMore()` adds the next 20, up to MAX_ITEMS.
  * Every page stays a live listener, so votes update in place.
  * `country`: '' = everywhere; a code = problems in that country plus "anywhere" ones.
  */
@@ -120,9 +122,11 @@ export function useIssueFeed(sort: Sort, category: Category | 'all', country = '
     loading: !loaded[0] && !current.error,
     error: current.error,
     loadingMore: list.length > 1 && !last,
-    hasMore: !!last && last.length === PAGE,
+    hasMore: !!last && last.length === PAGE && list.length * PAGE < MAX_ITEMS,
+    /** reached MAX_ITEMS while there may be more */
+    capped: !!last && last.length === PAGE && list.length * PAGE >= MAX_ITEMS,
     loadMore() {
-      if (!last?.length || last.length < PAGE) return
+      if (!last?.length || last.length < PAGE || list.length * PAGE >= MAX_ITEMS) return
       setCursors({ key, list: [...list, last.at(-1)!] })
     },
   }

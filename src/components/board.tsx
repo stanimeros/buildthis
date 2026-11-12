@@ -1,6 +1,5 @@
 import { ClockIcon, FireIcon, PlusIcon } from '@phosphor-icons/react'
 import { motion } from 'motion/react'
-import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { categoryIcons } from '@/components/badges'
@@ -24,17 +23,7 @@ export function Board() {
   const category: Category | 'all' = categories.includes(rawCat as Category) ? (rawCat as Category) : 'all'
   const rawCountry = params.get('country') ?? ''
   const country = isCountry(rawCountry) ? rawCountry : ''
-  const { data, loading, error, hasMore, loadingMore, loadMore } = useIssueFeed(sort, category, country)
-
-  // Infinite scroll: load the next page when the sentinel under the list comes into view.
-  const sentinel = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const el = sentinel.current
-    if (!el || !hasMore || loadingMore) return
-    const io = new IntersectionObserver((entries) => entries[0].isIntersecting && loadMore(), { rootMargin: '400px' })
-    io.observe(el)
-    return () => io.disconnect()
-  }, [hasMore, loadingMore, loadMore])
+  const { data, loading, error, hasMore, capped, loadingMore, loadMore } = useIssueFeed(sort, category, country)
 
   function set(key: string, value: string | null) {
     const next = new URLSearchParams(params)
@@ -131,18 +120,18 @@ export function Board() {
           <>
             <ul className="space-y-3">
               {data.map((issue, i) => (
-                <IssueCard key={issue.id} issue={issue} index={i % 50} />
+                <IssueCard key={issue.id} issue={issue} index={i % 20} />
               ))}
             </ul>
-            <div ref={sentinel} className="mt-6 flex justify-center">
+            <div className="mt-6 flex justify-center">
               {loadingMore ? (
                 <Spinner />
+              ) : hasMore ? (
+                <Button variant="outline" size="lg" onClick={loadMore}>
+                  {t('issues.loadMore')}
+                </Button>
               ) : (
-                hasMore && (
-                  <Button variant="outline" onClick={loadMore}>
-                    {t('issues.loadMore')}
-                  </Button>
-                )
+                capped && <p className="text-sm text-muted-foreground">{t('issues.useFilters')}</p>
               )}
             </div>
           </>
