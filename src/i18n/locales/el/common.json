@@ -196,7 +196,8 @@
     "verifyResend": "Στείλε ξανά το email",
     "verifySent": "Το email στάλθηκε. Κοίτα και στα ανεπιθύμητα.",
     "notVerified": "Δεν έχει επιβεβαιωθεί ακόμα. Άνοιξε πρώτα τον σύνδεσμο στο email.",
-    "otherAccount": "Χρήση άλλου λογαριασμού"
+    "otherAccount": "Χρήση άλλου λογαριασμού",
+    "withEmail": "Συνέχεια με email"
   },
   "onboarding": {
     "step": "Βήμα {{n}} από 2",

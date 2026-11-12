@@ -81,8 +81,9 @@ export function Header() {
               />
             </Link>
           ) : (
-            <Button size="icon" className="size-10" onClick={openAuthDialog} aria-label={t('nav.signIn')} title={t('nav.signIn')}>
-              <SignInIcon weight="bold" className="size-5" />
+            <Button onClick={openAuthDialog}>
+              <SignInIcon weight="bold" />
+              {t('nav.signIn')}
             </Button>
           )}
         </div>

@@ -61,7 +61,7 @@ export function CountrySelect({
           aria-invalid={invalid}
           aria-label={label}
           className={cn(
-            'flex items-center gap-2 border bg-background text-left outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive',
+            'flex items-center gap-2 border bg-card text-left outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive',
             pill
               ? cn(
                   'h-10 rounded-full px-3.5 text-sm font-semibold',

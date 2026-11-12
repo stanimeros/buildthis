@@ -196,7 +196,8 @@
     "verifyResend": "Send the email again",
     "verifySent": "Email sent. Check your spam folder too.",
     "notVerified": "Not confirmed yet. Open the link in the email first.",
-    "otherAccount": "Use another account"
+    "otherAccount": "Use another account",
+    "withEmail": "Continue with email"
   },
   "onboarding": {
     "step": "Step {{n}} of 2",

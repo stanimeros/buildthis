@@ -45,7 +45,7 @@ export function RolePicker({ value, onChange }: { value: Role | null; onChange: 
           whileTap={{ scale: 0.98 }}
           className={cn(
             'flex items-center gap-4 rounded-2xl border-2 p-4 text-left transition-colors',
-            value === role ? 'border-ink bg-background' : 'border-border bg-card hover:border-ink/30',
+            value === role ? 'border-ink bg-card' : 'border-border bg-card hover:border-ink/30',
           )}
         >
           <span className={cn('flex size-12 shrink-0 items-center justify-center rounded-xl', tile)}>

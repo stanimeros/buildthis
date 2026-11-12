@@ -116,3 +116,11 @@
     background-image: radial-gradient(oklch(0.18 0.01 60 / 0.12) 1px, transparent 1px);
     background-size: 22px 22px;
 }
+
+/* Autofilled fields keep the card background instead of the browser's tint. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--foreground);
+  transition: background-color 600000s 0s;
+}

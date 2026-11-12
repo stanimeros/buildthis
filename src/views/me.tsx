@@ -279,15 +279,9 @@ export function MePage() {
             <p className="text-sm text-muted-foreground">{user.email}</p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="icon"
-          className="size-11"
-          onClick={out}
-          aria-label={t('nav.signOut')}
-          title={t('nav.signOut')}
-        >
-          <SignOutIcon weight="bold" className="size-5" />
+        <Button variant="outline" onClick={out}>
+          <SignOutIcon weight="bold" />
+          {t('nav.signOut')}
         </Button>
       </div>
 

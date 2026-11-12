@@ -133,6 +133,8 @@ function EmailForm() {
 function SignInStep() {
   const { t } = useTranslation()
   const [busy, setBusy] = useState(false)
+  // Google is the main way in; email + password opens on request.
+  const [withEmail, setWithEmail] = useState(false)
 
   async function google() {
     setBusy(true)
@@ -165,7 +167,14 @@ function SignInStep() {
         {t('signin.or')}
         <span className="h-px flex-1 bg-border" />
       </div>
-      <EmailForm />
+      {withEmail ? (
+        <EmailForm />
+      ) : (
+        <Button size="lg" variant="outline" className="w-full" onClick={() => setWithEmail(true)}>
+          <EnvelopeSimpleIcon weight="bold" />
+          {t('signin.withEmail')}
+        </Button>
+      )}
       <p className="text-xs text-muted-foreground">{t('signin.terms')}</p>
     </div>
   )
@@ -271,24 +280,28 @@ export function AuthDialog() {
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && closeAuthDialog()}>
-      <DialogContent className="max-h-[90svh] overflow-y-auto rounded-[2rem] p-6 ring-2 ring-ink sm:max-w-md sm:p-8">
-        {unverified ? (
-          <VerifyStep email={unverified.email ?? ''} />
-        ) : !user ? (
-          <SignInStep />
-        ) : loading ? (
-          <>
-            <DialogTitle className="sr-only">{t('common.loading')}</DialogTitle>
-            <Spinner />
-          </>
-        ) : (
-          <>
-            <DialogTitle className="sr-only">{t('signin.title')}</DialogTitle>
-            <Suspense fallback={<Spinner />}>
-              <OnboardingForm />
-            </Suspense>
-          </>
-        )}
+      {/* Full screen: the page behind is replaced while signing up. */}
+      <DialogContent className="inset-0 top-0 left-0 block h-dvh w-full max-w-none translate-x-0 translate-y-0 overflow-y-auto rounded-none bg-background p-0 ring-0 sm:max-w-none [&>button]:fixed [&>button]:top-4 [&>button]:right-4 [&>button]:z-10 [&>button]:size-10">
+        <div className="bg-dots pointer-events-none fixed inset-0 [mask-image:radial-gradient(ellipse_at_center,black_20%,transparent_70%)]" />
+        <div className="relative mx-auto flex min-h-full w-full max-w-md flex-col justify-center px-6 py-16">
+          {unverified ? (
+            <VerifyStep email={unverified.email ?? ''} />
+          ) : !user ? (
+            <SignInStep />
+          ) : loading ? (
+            <>
+              <DialogTitle className="sr-only">{t('common.loading')}</DialogTitle>
+              <Spinner />
+            </>
+          ) : (
+            <>
+              <DialogTitle className="sr-only">{t('signin.title')}</DialogTitle>
+              <Suspense fallback={<Spinner />}>
+                <OnboardingForm />
+              </Suspense>
+            </>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   )
