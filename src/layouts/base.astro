@@ -1,0 +1,50 @@
+---
+import '@/index.css'
+
+import { ClientRouter } from 'astro:transitions'
+
+import FooterIsland from '@/islands/footer'
+import HeaderIsland from '@/islands/header'
+
+interface Props {
+  title?: string
+  description?: string
+  /** Pages served for many URLs (rewrites) or private pages. */
+  noindex?: boolean
+}
+
+const {
+  title,
+  description = 'Post the problems you want an app for, upvote the ones you share, and let builders compete to solve them.',
+  noindex = false,
+} = Astro.props
+const fullTitle = title ? `${title} · BuildThis` : 'BuildThis — stop guessing what to build'
+const canonical = new URL(Astro.url.pathname.replace(/\.html$/, ''), Astro.site)
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f8f5ee" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="BuildThis" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    {!noindex && <meta property="og:url" content={canonical} />}
+    <meta name="twitter:card" content="summary" />
+    <ClientRouter />
+  </head>
+  <body class="flex min-h-svh flex-col overflow-x-clip bg-background text-foreground">
+    <HeaderIsland client:load transition:persist="header" />
+    <main class="flex-1">
+      <slot />
+    </main>
+    <FooterIsland client:load transition:persist="footer" />
+  </body>
+</html>

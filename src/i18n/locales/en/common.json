@@ -1,14 +1,18 @@
 {
   "nav": {
     "language": "Language",
-    "join": "Join the waitlist"
+    "issues": "Issues",
+    "post": "Post a problem",
+    "signIn": "Sign in",
+    "me": "My account",
+    "signOut": "Sign out"
   },
   "hero": {
-    "badge": "Opening soon · Join the waitlist",
+    "badge": "Now live · Post your first problem",
     "title": "Stop guessing <hl>what to build.</hl>",
     "subtitle": "People post the problems they want an app for. Everyone upvotes the ones they share. Builders ship solutions and compete on the same problem.",
-    "ctaProblem": "I have a problem to solve",
-    "ctaBuilder": "I'm a builder"
+    "ctaProblem": "Post a problem",
+    "ctaBuilder": "Browse issues"
   },
   "how": {
     "title": "How it works",
@@ -22,9 +26,7 @@
   },
   "examples": {
     "title": "Example issues",
-    "subtitle": "The kind of problems we want to see. Go ahead, upvote one.",
-    "votes": "{{count}} votes",
-    "builders": "{{count}} builders",
+    "subtitle": "Nothing posted yet. Here's the kind of thing we mean.",
     "items": {
       "1": {
         "title": "Split shared groceries with roommates automatically",
@@ -46,29 +48,11 @@
         "title": "Get notified when a rental in my area matches my budget",
         "category": "Housing"
       }
-    },
-    "tryVote": "Tap to upvote"
-  },
-  "signup": {
-    "title": "Get early access",
-    "subtitle": "Tell us who you are. We'll email you when BuildThis opens.",
-    "typeProblem": "I have a problem",
-    "typeBuilder": "I'm a builder",
-    "email": "Email",
-    "emailPlaceholder": "you@example.com",
-    "textProblem": "What app do you wish existed?",
-    "textProblemPlaceholder": "I want an app that…",
-    "textBuilder": "What do you build with?",
-    "textBuilderPlaceholder": "e.g. React, Flutter, Swift, no-code…",
-    "submit": "Join",
-    "submitting": "Sending…",
-    "success": "You're on the list. Thanks!",
-    "another": "Send another",
-    "error": "Something went wrong. Please try again.",
-    "invalidEmail": "Please enter a valid email."
+    }
   },
   "footer": {
-    "privacy": "We only use your email to tell you when BuildThis opens."
+    "tagline": "Tell us what to build. Builders compete to ship it.",
+    "source": "Open source"
   },
   "marquee": {
     "1": "An app to split bills with roommates",
@@ -79,5 +63,166 @@
     "6": "Book a padel court in 2 taps",
     "7": "Remind me to water my plants",
     "8": "Compare supermarket prices near me"
+  },
+  "home": {
+    "topTitle": "Top issues right now",
+    "topSubtitle": "Upvote the ones you'd use. Builders are watching.",
+    "seeAll": "See all issues",
+    "builderTitle": "Builders: skip the guessing.",
+    "builderBody": "Pick a problem people already asked for, ship it, and get your first users on day one.",
+    "builderCta": "Find something to build",
+    "postTitle": "What app do you wish existed?",
+    "postCta": "Post it now"
+  },
+  "categories": {
+    "all": "All",
+    "productivity": "Productivity",
+    "finance": "Finance",
+    "health": "Health",
+    "family": "Family",
+    "education": "Education",
+    "housing": "Housing",
+    "transport": "Transport",
+    "food": "Food",
+    "social": "Social",
+    "work": "Work",
+    "other": "Other"
+  },
+  "platforms": {
+    "any": "Any platform",
+    "web": "Web",
+    "ios": "iOS",
+    "android": "Android"
+  },
+  "count": {
+    "votes_one": "{{count}} vote",
+    "votes_other": "{{count}} votes",
+    "builders_one": "{{count}} builder",
+    "builders_other": "{{count}} builders",
+    "solutions_one": "{{count}} solution",
+    "solutions_other": "{{count}} solutions"
+  },
+  "issues": {
+    "title": "Issues",
+    "subtitle": "Problems people want an app for. Upvote what you share.",
+    "top": "Top",
+    "new": "New",
+    "empty": "No issues here yet.",
+    "emptyCta": "Be the first to post one",
+    "upvote": "Upvote",
+    "removeVote": "Remove vote"
+  },
+  "issue": {
+    "notFound": "This issue doesn't exist (or was removed).",
+    "back": "All issues",
+    "by": "by {{name}}",
+    "building": "I'm building this",
+    "buildingActive": "You're building this",
+    "buildingHint": "Let people know you're on it. You can submit your solution when it's ready.",
+    "solutionsTitle": "Solutions",
+    "noSolutions": "No solutions yet. Could be yours.",
+    "submitSolution": "Submit a solution",
+    "yourSolution": "Your solution",
+    "visit": "Visit",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleteSolutionConfirm": "Remove your solution?",
+    "adminDelete": "Delete issue (admin)",
+    "adminDeleteConfirm": "Delete this issue for everyone?",
+    "share": "Share",
+    "copied": "Link copied"
+  },
+  "newIssue": {
+    "title": "Post a problem",
+    "editTitle": "Edit your issue",
+    "subtitle": "Describe the app you wish existed. Keep it about the problem, not the solution.",
+    "fieldTitle": "Title",
+    "titlePlaceholder": "I want an app that…",
+    "fieldBody": "Details",
+    "bodyPlaceholder": "Who has this problem? When does it happen? What do you do today?",
+    "fieldCategory": "Category",
+    "fieldPlatform": "Platform",
+    "submit": "Post issue",
+    "save": "Save changes",
+    "submitting": "Posting…",
+    "cooldown": "You just posted. You can post again in a few minutes.",
+    "error": "Couldn't post. Please try again.",
+    "titleLength": "Title must be 8–120 characters."
+  },
+  "solution": {
+    "title": "Submit your solution",
+    "editTitle": "Edit your solution",
+    "subtitle": "Built something for this problem? Share it. People will vote for the best one.",
+    "forIssue": "For: {{title}}",
+    "fieldName": "Name",
+    "namePlaceholder": "Your app's name",
+    "fieldUrl": "Link",
+    "urlPlaceholder": "https://",
+    "urlHint": "Website, App Store or Play Store link. Must start with https://",
+    "fieldBody": "Short description",
+    "bodyPlaceholder": "How does it solve the problem?",
+    "submit": "Submit solution",
+    "save": "Save changes",
+    "submitting": "Submitting…",
+    "already": "You already submitted a solution to this issue.",
+    "cooldown": "You just submitted a solution. Try again in a couple of minutes.",
+    "error": "Couldn't submit. Please try again.",
+    "invalidUrl": "Enter a valid https:// link.",
+    "nameLength": "Name must be 2–80 characters."
+  },
+  "signin": {
+    "title": "Sign in to BuildThis",
+    "subtitle": "Post problems, upvote, and ship solutions.",
+    "google": "Continue with Google",
+    "error": "Sign-in failed. Please try again.",
+    "terms": "By continuing you agree to let us store your name and email to run your account."
+  },
+  "onboarding": {
+    "step": "Step {{n}} of 2",
+    "q1": "What brings you here?",
+    "roleUser": "I have problems",
+    "roleUserBody": "I want apps that solve them.",
+    "roleBuilder": "I build things",
+    "roleBuilderBody": "I want to know what to build.",
+    "roleBoth": "Both",
+    "roleBothBody": "I have ideas and I ship.",
+    "q2": "About you",
+    "name": "Display name",
+    "country": "Country",
+    "countryPlaceholder": "e.g. Greece",
+    "stack": "What do you build with?",
+    "link": "GitHub or website",
+    "linkPlaceholder": "https:// (optional)",
+    "back": "Back",
+    "next": "Continue",
+    "finish": "Let's go",
+    "saving": "Saving…",
+    "error": "Couldn't save. Please try again."
+  },
+  "me": {
+    "title": "My account",
+    "profile": "Profile",
+    "role": "I'm here because",
+    "save": "Save profile",
+    "saved": "Profile saved",
+    "myIssues": "My issues",
+    "mySolutions": "My solutions",
+    "myVotes": "My upvotes",
+    "noIssues": "You haven't posted anything yet.",
+    "noSolutions": "No solutions yet.",
+    "noVotes": "You haven't upvoted anything yet.",
+    "danger": "Delete account",
+    "dangerBody": "Removes your profile and sign-in. Your issues and solutions stay, shown as \"Deleted user\".",
+    "deleteConfirm": "Delete your account? This can't be undone.",
+    "reauth": "For security, sign in again, then delete your account.",
+    "deleted": "Your account was deleted."
+  },
+  "common": {
+    "loading": "Loading…",
+    "error": "Something went wrong.",
+    "cancel": "Cancel",
+    "notFound": "Page not found.",
+    "home": "Back home",
+    "signInToVote": "Sign in to upvote"
   }
 }

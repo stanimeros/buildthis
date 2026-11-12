@@ -2,8 +2,8 @@ import { ArrowFatUpIcon, CursorIcon, HammerIcon, SparkleIcon } from '@phosphor-i
 import { motion, type Variants } from 'motion/react'
 import type { ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { Link } from '@/lib/nav'
 
-import type { SignupType } from '@/components/signup-form'
 import { Button } from '@/components/ui/button'
 
 const rise: Variants = {
@@ -54,7 +54,7 @@ function Floater({
   )
 }
 
-export function Hero({ onPick }: { onPick: (type: SignupType) => void }) {
+export function Hero() {
   const { t } = useTranslation()
 
   return (
@@ -93,8 +93,8 @@ export function Hero({ onPick }: { onPick: (type: SignupType) => void }) {
         transition={{ staggerChildren: 0.12, delayChildren: 0.15 }}
       >
         <motion.div variants={rise} className="inline-flex">
-          <a
-            href="#signup"
+          <Link
+            to="/new"
             className="inline-flex items-center gap-2 rounded-full border bg-card px-4 py-1.5 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5"
           >
             <span className="relative flex size-2">
@@ -102,7 +102,7 @@ export function Hero({ onPick }: { onPick: (type: SignupType) => void }) {
               <span className="relative inline-flex size-2 rounded-full bg-primary" />
             </span>
             {t('hero.badge')}
-          </a>
+          </Link>
         </motion.div>
 
         <motion.h1
@@ -121,14 +121,16 @@ export function Hero({ onPick }: { onPick: (type: SignupType) => void }) {
 
         <motion.div variants={rise} className="mt-10 flex flex-col justify-center gap-3 sm:flex-row">
           <motion.div whileHover={{ y: -3 }} whileTap={{ scale: 0.96 }}>
-            <Button size="lg" variant="flame" className="w-full" onClick={() => onPick('problem')}>
-              {t('hero.ctaProblem')}
+            <Button size="lg" variant="flame" className="w-full" asChild>
+              <Link to="/new">{t('hero.ctaProblem')}</Link>
             </Button>
           </motion.div>
           <motion.div whileHover={{ y: -3 }} whileTap={{ scale: 0.96 }}>
-            <Button size="lg" variant="outline" className="w-full" onClick={() => onPick('builder')}>
-              <HammerIcon weight="duotone" />
-              {t('hero.ctaBuilder')}
+            <Button size="lg" variant="outline" className="w-full" asChild>
+              <Link to="/issues">
+                <HammerIcon weight="duotone" />
+                {t('hero.ctaBuilder')}
+              </Link>
             </Button>
           </motion.div>
         </motion.div>

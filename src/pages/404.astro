@@ -1,0 +1,11 @@
+---
+import Loading from '@/components/loading.astro'
+import Base from '@/layouts/base.astro'
+import NotFoundIsland from '@/islands/not-found'
+---
+
+<Base title="Not found" noindex>
+  <NotFoundIsland client:only="react">
+    <Loading slot="fallback" />
+  </NotFoundIsland>
+</Base>

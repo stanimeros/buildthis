@@ -1,0 +1,9 @@
+---
+import Base from '@/layouts/base.astro'
+import HomeIsland from '@/islands/home'
+---
+
+<!-- Pre-rendered at build time (SEO), then hydrated for motion and live data. -->
+<Base>
+  <HomeIsland client:load />
+</Base>

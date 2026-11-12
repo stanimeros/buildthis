@@ -1,0 +1,11 @@
+---
+import Loading from '@/components/loading.astro'
+import Base from '@/layouts/base.astro'
+import SolutionFormIsland from '@/islands/solution-form'
+---
+
+<Base title="Submit a solution" noindex>
+  <SolutionFormIsland client:only="react">
+    <Loading slot="fallback" />
+  </SolutionFormIsland>
+</Base>

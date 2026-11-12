@@ -1,0 +1,11 @@
+---
+import Loading from '@/components/loading.astro'
+import Base from '@/layouts/base.astro'
+import MeIsland from '@/islands/me'
+---
+
+<Base title="My account" noindex>
+  <MeIsland client:only="react">
+    <Loading slot="fallback" />
+  </MeIsland>
+</Base>

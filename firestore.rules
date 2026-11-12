@@ -2,7 +2,248 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Validation landing sign-ups: anyone can create, nobody can read/update/delete from the client.
+    // ---------- helpers ----------
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isMe(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function userPath(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+
+    function onboarded() {
+      return signedIn() && exists(userPath(request.auth.uid))
+        && get(userPath(request.auth.uid)).data.onboardedAt != null;
+    }
+
+    function str(v, min, max) {
+      return v is string && v.size() >= min && v.size() <= max;
+    }
+
+    function categories() {
+      return ['productivity', 'finance', 'health', 'family', 'education', 'housing',
+              'transport', 'food', 'social', 'work', 'other'];
+    }
+
+    function platforms() {
+      return ['web', 'ios', 'android', 'any'];
+    }
+
+    function changed() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    // A counter field moves by exactly +1 / -1 compared to the stored value.
+    function bumped(field, delta) {
+      return changed().hasOnly([field])
+        && request.resource.data[field] == resource.data[field] + delta;
+    }
+
+    // `lastField` was older than `minutes` (or never set) and this batch sets it to now.
+    function cooledDown(lastField, minutes) {
+      let before = get(userPath(request.auth.uid)).data;
+      let after = getAfter(userPath(request.auth.uid)).data;
+      return after.get(lastField, null) == request.time
+        && (before.get(lastField, null) == null
+            || before[lastField] < request.time - duration.value(minutes, 'm'));
+    }
+
+    // ---------- users ----------
+
+    function validProfile(d) {
+      return d.keys().hasOnly(['name', 'photo', 'role', 'country', 'stack', 'link', 'lang', 'source',
+                               'lastIssueAt', 'lastSolutionAt', 'onboardedAt', 'createdAt'])
+        && str(d.name, 1, 60)
+        && str(d.photo, 0, 500)
+        && d.role in ['user', 'builder', 'both']
+        && str(d.country, 0, 60)
+        && d.stack is list && d.stack.size() <= 10
+        && str(d.link, 0, 200)
+        && d.lang in ['en', 'el']
+        && str(d.source, 0, 200)
+        && d.onboardedAt is timestamp;
+    }
+
+    match /users/{uid} {
+      allow read: if isMe(uid);
+      allow create: if isMe(uid)
+        && validProfile(request.resource.data)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.onboardedAt == request.time
+        && !('lastIssueAt' in request.resource.data)
+        && !('lastSolutionAt' in request.resource.data);
+      allow update: if isMe(uid)
+        && validProfile(request.resource.data)
+        && !changed().hasAny(['createdAt', 'onboardedAt', 'source'])
+        // Cooldown stamps can only ever move to "now", never be backdated.
+        && (!changed().hasAny(['lastIssueAt']) || request.resource.data.lastIssueAt == request.time)
+        && (!changed().hasAny(['lastSolutionAt']) || request.resource.data.lastSolutionAt == request.time);
+      allow delete: if isMe(uid);
+    }
+
+    match /admins/{uid} {
+      allow read: if isMe(uid);
+    }
+
+    // ---------- issues ----------
+
+    function validIssueContent(d) {
+      return str(d.title, 8, 120)
+        && str(d.body, 0, 2000)
+        && d.category in categories()
+        && d.platform in platforms()
+        && str(d.authorName, 1, 60)
+        && str(d.authorPhoto, 0, 500);
+    }
+
+    match /issues/{issueId} {
+      allow read: if true;
+
+      allow create: if onboarded()
+        && request.resource.data.keys().hasOnly(['title', 'body', 'category', 'platform', 'authorId',
+                                                 'authorName', 'authorPhoto', 'votes', 'builders',
+                                                 'solutions', 'createdAt'])
+        && validIssueContent(request.resource.data)
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.votes == 0
+        && request.resource.data.builders == 0
+        && request.resource.data.solutions == 0
+        && request.resource.data.createdAt == request.time
+        && cooledDown('lastIssueAt', 10);
+
+      allow update: if
+        // Author edits content.
+        (isMe(resource.data.authorId)
+          && changed().hasOnly(['title', 'body', 'category', 'platform', 'authorName', 'authorPhoto'])
+          && validIssueContent(request.resource.data))
+        // Vote / unvote, together with the vote doc.
+        || (signedIn() && bumped('votes', 1)
+          && !exists(/databases/$(database)/documents/issues/$(issueId)/votes/$(request.auth.uid))
+          && existsAfter(/databases/$(database)/documents/issues/$(issueId)/votes/$(request.auth.uid)))
+        || (signedIn() && bumped('votes', -1)
+          && exists(/databases/$(database)/documents/issues/$(issueId)/votes/$(request.auth.uid))
+          && !existsAfter(/databases/$(database)/documents/issues/$(issueId)/votes/$(request.auth.uid)))
+        // "I'm building this" / un-claim.
+        || (signedIn() && bumped('builders', 1)
+          && !exists(/databases/$(database)/documents/issues/$(issueId)/builders/$(request.auth.uid))
+          && existsAfter(/databases/$(database)/documents/issues/$(issueId)/builders/$(request.auth.uid)))
+        || (signedIn() && bumped('builders', -1)
+          && exists(/databases/$(database)/documents/issues/$(issueId)/builders/$(request.auth.uid))
+          && !existsAfter(/databases/$(database)/documents/issues/$(issueId)/builders/$(request.auth.uid)))
+        // Solution submitted / removed (solution id is `${issueId}_${uid}`).
+        || (signedIn() && bumped('solutions', 1)
+          && !exists(/databases/$(database)/documents/solutions/$(issueId + '_' + request.auth.uid))
+          && existsAfter(/databases/$(database)/documents/solutions/$(issueId + '_' + request.auth.uid)))
+        || (signedIn() && bumped('solutions', -1)
+          && exists(/databases/$(database)/documents/solutions/$(issueId + '_' + request.auth.uid))
+          && !existsAfter(/databases/$(database)/documents/solutions/$(issueId + '_' + request.auth.uid)));
+
+      allow delete: if isAdmin();
+
+      // Vote / builder docs are keyed by uid: one per user. The counter must move in the same batch.
+      match /votes/{uid} {
+        allow read: if isMe(uid);
+        allow create: if isMe(uid)
+          && request.resource.data.keys().hasOnly(['uid', 'issueId', 'createdAt'])
+          && request.resource.data.uid == uid
+          && request.resource.data.issueId == issueId
+          && request.resource.data.createdAt == request.time
+          && getAfter(/databases/$(database)/documents/issues/$(issueId)).data.votes
+             == get(/databases/$(database)/documents/issues/$(issueId)).data.votes + 1;
+        allow delete: if isMe(uid)
+          && getAfter(/databases/$(database)/documents/issues/$(issueId)).data.votes
+             == get(/databases/$(database)/documents/issues/$(issueId)).data.votes - 1;
+      }
+
+      match /builders/{uid} {
+        allow read: if isMe(uid);
+        allow create: if onboarded() && isMe(uid)
+          && request.resource.data.keys().hasOnly(['uid', 'issueId', 'createdAt'])
+          && request.resource.data.uid == uid
+          && request.resource.data.issueId == issueId
+          && request.resource.data.createdAt == request.time
+          && getAfter(/databases/$(database)/documents/issues/$(issueId)).data.builders
+             == get(/databases/$(database)/documents/issues/$(issueId)).data.builders + 1;
+        allow delete: if isMe(uid)
+          && getAfter(/databases/$(database)/documents/issues/$(issueId)).data.builders
+             == get(/databases/$(database)/documents/issues/$(issueId)).data.builders - 1;
+      }
+    }
+
+    // ---------- solutions ----------
+
+    function validSolutionContent(d) {
+      return str(d.title, 2, 80)
+        && str(d.url, 10, 300) && d.url.matches('^https://[^\\s]+$')
+        && str(d.body, 0, 1000)
+        && str(d.authorName, 1, 60)
+        && str(d.authorPhoto, 0, 500);
+    }
+
+    match /solutions/{solutionId} {
+      allow read: if true;
+
+      allow create: if onboarded()
+        && solutionId == request.resource.data.issueId + '_' + request.auth.uid
+        && request.resource.data.keys().hasOnly(['issueId', 'title', 'url', 'body', 'authorId',
+                                                 'authorName', 'authorPhoto', 'votes', 'createdAt'])
+        && validSolutionContent(request.resource.data)
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.votes == 0
+        && request.resource.data.createdAt == request.time
+        && exists(/databases/$(database)/documents/issues/$(request.resource.data.issueId))
+        && getAfter(/databases/$(database)/documents/issues/$(request.resource.data.issueId)).data.solutions
+           == get(/databases/$(database)/documents/issues/$(request.resource.data.issueId)).data.solutions + 1
+        && cooledDown('lastSolutionAt', 2);
+
+      allow update: if
+        (isMe(resource.data.authorId)
+          && changed().hasOnly(['title', 'url', 'body', 'authorName', 'authorPhoto'])
+          && validSolutionContent(request.resource.data))
+        || (signedIn() && bumped('votes', 1)
+          && !exists(/databases/$(database)/documents/solutions/$(solutionId)/votes/$(request.auth.uid))
+          && existsAfter(/databases/$(database)/documents/solutions/$(solutionId)/votes/$(request.auth.uid)))
+        || (signedIn() && bumped('votes', -1)
+          && exists(/databases/$(database)/documents/solutions/$(solutionId)/votes/$(request.auth.uid))
+          && !existsAfter(/databases/$(database)/documents/solutions/$(solutionId)/votes/$(request.auth.uid)));
+
+      // Author removes their solution (issue counter goes down in the same batch), or admin.
+      allow delete: if isAdmin()
+        || (isMe(resource.data.authorId)
+          && getAfter(/databases/$(database)/documents/issues/$(resource.data.issueId)).data.solutions
+             == get(/databases/$(database)/documents/issues/$(resource.data.issueId)).data.solutions - 1);
+
+      match /votes/{uid} {
+        allow read: if isMe(uid);
+        allow create: if isMe(uid)
+          && request.resource.data.keys().hasOnly(['uid', 'solutionId', 'createdAt'])
+          && request.resource.data.uid == uid
+          && request.resource.data.solutionId == solutionId
+          && request.resource.data.createdAt == request.time
+          && getAfter(/databases/$(database)/documents/solutions/$(solutionId)).data.votes
+             == get(/databases/$(database)/documents/solutions/$(solutionId)).data.votes + 1;
+        allow delete: if isMe(uid)
+          && getAfter(/databases/$(database)/documents/solutions/$(solutionId)).data.votes
+             == get(/databases/$(database)/documents/solutions/$(solutionId)).data.votes - 1;
+      }
+    }
+
+    // "My votes" on /me: collection-group query over issue votes, own docs only.
+    match /{path=**}/votes/{uid} {
+      allow read: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    // ---------- legacy validation sign-ups (write-only) ----------
+
     match /signups/{id} {
       allow create: if request.resource.data.keys().hasOnly(['email', 'type', 'text', 'lang', 'source', 'createdAt'])
         && request.resource.data.email is string
@@ -15,10 +256,6 @@ service cloud.firestore {
         && request.resource.data.source is string
         && request.resource.data.source.size() <= 200
         && request.resource.data.createdAt == request.time;
-    }
-
-    match /{document=**} {
-      allow read, write: if false;
     }
   }
 }

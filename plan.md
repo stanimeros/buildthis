@@ -15,7 +15,7 @@ and developers/founders build solutions and compete on the same problem.**
 
 Builders get validated demand and their first users before they write code. Users get the app they asked for.
 
-## Step 1: validate before building
+## Step 1: validate before building (skipped: we shipped the MVP directly)
 
 Goal: find out if people will actually **post and vote**, and if builders care.
 
@@ -42,7 +42,7 @@ Goal: find out if people will actually **post and vote**, and if builders care.
 - `/me` — my issues, my votes, my solutions
 
 ### Features
-- Sign in with Google + email link (Firebase Auth)
+- Sign in with Google only (Firebase Auth)
 - Post issue, upvote issue (one vote per user)
 - "I'm building this" — builders claim interest, the count is shown on the issue
 - Submit a solution, upvote solutions
@@ -71,7 +71,7 @@ Keep the data model open to this (an issue can get a `visibility` field later), 
 
 ## Tech
 
-- **Vite + React + TypeScript**
+- **Astro (static) + React islands + TypeScript**: landing pre-rendered for SEO, app pages are client-only islands
 - **shadcn/ui + Tailwind** — clean, minimal theme (neutral base, one accent colour, rounded, lots of whitespace)
 - **i18n:** `react-i18next`, files at `src/i18n/locales/{lang}/{ns}.json`, languages `en` (primary) + `el`.
   Translations are kept in sync with the local **i18n-sync** CLI (`~/Developer/i18n-sync`): write the English strings,

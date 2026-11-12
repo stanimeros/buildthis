@@ -1,0 +1,11 @@
+---
+import Loading from '@/components/loading.astro'
+import Base from '@/layouts/base.astro'
+import SignInIsland from '@/islands/sign-in'
+---
+
+<Base title="Sign in">
+  <SignInIsland client:only="react">
+    <Loading slot="fallback" />
+  </SignInIsland>
+</Base>
