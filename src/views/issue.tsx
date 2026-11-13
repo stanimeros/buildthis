@@ -241,7 +241,7 @@ export function IssuePage() {
         animate={{ opacity: 1, y: 0 }}
         className="mt-6 rounded-[2rem] border bg-card p-6 sm:p-8"
       >
-        <div className="flex items-start gap-5">
+        <div className="flex items-start gap-4 sm:gap-5">
           <VoteButton
             size="lg"
             votes={issue.votes}
@@ -249,7 +249,7 @@ export function IssuePage() {
             onToggle={(voted) => toggleIssueVote(issue.id, voted)}
           />
           <div className="min-w-0 flex-1">
-            <h1 className="text-2xl leading-tight font-extrabold tracking-tight break-words sm:text-4xl">
+            <h1 className="text-xl leading-tight font-extrabold tracking-tight break-words sm:text-4xl">
               {issue.title}
             </h1>
             <div className="mt-3 flex flex-wrap gap-2">

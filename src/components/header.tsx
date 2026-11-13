@@ -81,10 +81,15 @@ export function Header() {
               />
             </Link>
           ) : (
-            <Button onClick={openAuthDialog}>
-              <SignInIcon weight="bold" />
-              {t('nav.signIn')}
-            </Button>
+            <>
+              <Button size="icon" className="sm:hidden" aria-label={t('nav.signIn')} onClick={openAuthDialog}>
+                <SignInIcon weight="bold" />
+              </Button>
+              <Button className="hidden sm:inline-flex" onClick={openAuthDialog}>
+                <SignInIcon weight="bold" />
+                {t('nav.signIn')}
+              </Button>
+            </>
           )}
         </div>
       </div>
