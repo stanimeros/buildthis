@@ -87,7 +87,7 @@ export function OnboardingForm() {
   const [country, setCountry] = useState(guessCountry)
   const [stack, setStack] = useState<string[]>([])
   const [link, setLink] = useState('')
-  const [isPublic, setPublic] = useState(false)
+  const [isPublic, setPublic] = useState(true)
   const [saving, setSaving] = useState(false)
 
   const builder = role === 'builder' || role === 'both'

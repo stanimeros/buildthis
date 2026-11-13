@@ -40,7 +40,8 @@ function ProfileForm({ profile }: { profile: Profile }) {
   const [country, setCountry] = useState(isCountry(profile.country) ? profile.country : '')
   const [stack, setStack] = useState(profile.stack)
   const [link, setLink] = useState(profile.link)
-  const [isPublic, setPublic] = useState(profile.public ?? false)
+  // Non-builders were never listed; if they switch to builder, start them as public.
+  const [isPublic, setPublic] = useState(profile.role === 'user' || (profile.public ?? false))
   const [saving, setSaving] = useState(false)
   const builder = role !== 'user'
   const linkOk = !link.trim() || /^https:\/\/\S+\.\S+$/.test(link.trim())
