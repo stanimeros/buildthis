@@ -4,7 +4,7 @@ import Base from '@/layouts/base.astro'
 import NotFoundIsland from '@/islands/not-found'
 ---
 
-<Base title="Not found" titleKey="meta.notFound" noindex>
+<Base titleKey="meta.notFound" noindex>
   <NotFoundIsland client:only="react">
     <Loading slot="fallback" />
   </NotFoundIsland>

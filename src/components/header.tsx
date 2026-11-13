@@ -1,19 +1,25 @@
 import { PlusIcon, SignInIcon } from '@phosphor-icons/react'
 import { m } from 'motion/react'
 import { useTranslation } from 'react-i18next'
-import { Link } from '@/lib/nav'
+import { Link, navigate } from '@/lib/nav'
 
 import { Avatar } from '@/components/avatar'
 import { Logo } from '@/components/logo'
 import { Dots } from '@/components/spinner'
 import { AuthLink } from '@/components/auth-dialog'
 import { Button } from '@/components/ui/button'
-import { languages, setLanguage } from '@/i18n'
+import { type Language, languages, saveLanguage } from '@/i18n'
 import { useAuth } from '@/lib/auth'
 import { openAuthDialog } from '@/lib/auth-dialog'
 import { cn } from '@/lib/utils'
 
 const labels = { en: 'EN', el: 'ΕΛ' } as const
+
+/** The same page in the other language. */
+function switchLanguage(lang: Language) {
+  saveLanguage(lang)
+  navigate(location.pathname + location.search + location.hash, { lang })
+}
 
 export function Header() {
   const { t, i18n } = useTranslation()
@@ -36,7 +42,7 @@ export function Header() {
                 key={l}
                 role="radio"
                 aria-checked={lang === l}
-                onClick={() => setLanguage(l)}
+                onClick={() => lang !== l && switchLanguage(l)}
                 className={cn(
                   'relative rounded-full px-2.5 py-1 text-xs font-bold transition-colors sm:px-3',
                   lang === l ? 'text-background' : 'text-muted-foreground hover:text-foreground',

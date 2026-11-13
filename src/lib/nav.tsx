@@ -1,8 +1,11 @@
 // Tiny router-shaped helpers for Astro islands. Pages are real Astro pages; navigation goes
 // through Astro's <ClientRouter /> (view transitions), so links are plain <a href>.
+// Paths are written without the language prefix ("/new"); these helpers add "/el" on Greek pages.
 import { type AnchorHTMLAttributes, useEffect, useMemo, useSyncExternalStore } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { Spinner } from '@/components/spinner'
+import { type Language, langFromPath, localizePath } from '@/i18n'
 
 const listeners = new Set<() => void>()
 const emit = () => listeners.forEach((l) => l())
@@ -17,9 +20,11 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener)
 }
 
-export function navigate(to: string, opts: { replace?: boolean } = {}) {
+/** `lang` switches language; otherwise it stays the current page's. */
+export function navigate(to: string, opts: { replace?: boolean; lang?: Language } = {}) {
+  const href = localizePath(to, opts.lang ?? langFromPath(location.pathname))
   import('astro:transitions/client').then(({ navigate: go }) =>
-    go(to, { history: opts.replace ? 'replace' : 'auto' }),
+    go(href, { history: opts.replace ? 'replace' : 'auto' }),
   )
 }
 
@@ -33,10 +38,10 @@ export function useLocation() {
   return { pathname, search }
 }
 
-/** `/p/:id[/edit|/submit]` → { id } */
+/** `[/el]/p/:id[/edit|/submit]` → { id } */
 export function useParams(): { id?: string } {
   const { pathname } = useLocation()
-  const match = pathname.match(/^\/p\/([^/]+)/)
+  const match = pathname.match(/^(?:\/el)?\/p\/([^/]+)/)
   return { id: match ? decodeURIComponent(match[1]) : undefined }
 }
 
@@ -54,7 +59,8 @@ export function useSearchParams() {
 type LinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & { to: string }
 
 export function Link({ to, ...props }: LinkProps) {
-  return <a href={to} {...props} />
+  const { i18n } = useTranslation()
+  return <a href={localizePath(to, i18n.language === 'el' ? 'el' : 'en')} {...props} />
 }
 
 export function Navigate({ to, replace }: { to: string; replace?: boolean }) {

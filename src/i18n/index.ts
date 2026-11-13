@@ -9,57 +9,51 @@ export type Language = (typeof languages)[number]
 
 const STORAGE_KEY = 'lang'
 
-// Pages are pre-rendered in English. Every island starts in English too, so hydration matches
-// the HTML, and `useDetectedLanguage` switches to the visitor's language right after.
+/** English lives at `/`, Greek under `/el`. */
+export function langFromPath(path: string): Language {
+  return /^\/el(?=[/?#]|$)/.test(path) ? 'el' : 'en'
+}
+
+/** The same in-app path in `lang`, e.g. ("/p/abc", "el") → "/el/p/abc". Leaves other URLs alone. */
+export function localizePath(path: string, lang: Language) {
+  if (!path.startsWith('/') || path.startsWith('//')) return path
+  const bare = path.replace(/^\/el(?=[/?#]|$)/, '') || '/'
+  if (lang === 'en') return bare
+  return /^\/(?:[?#]|$)/.test(bare) ? `/el${bare.slice(1)}` : `/el${bare}`
+}
+
+/** One page per language: `[...lang]` is undefined for English and "el" for Greek. */
+export function getStaticPaths() {
+  return [{ params: { lang: undefined } }, { params: { lang: 'el' } }]
+}
+
+// Every page is pre-rendered in its own language, so the language comes from the URL.
 i18n.use(initReactI18next).init({
   resources: {
     en: { common: enCommon },
     el: { common: elCommon },
   },
-  lng: 'en',
+  lng: typeof location === 'undefined' ? 'en' : langFromPath(location.pathname),
   fallbackLng: 'en',
   supportedLngs: languages,
   defaultNS: 'common',
   interpolation: { escapeValue: false },
 })
 
-function detect(): Language {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved === 'en' || saved === 'el') return saved
-  } catch {
-    // ignore
-  }
-  return navigator.languages?.some((l) => l.toLowerCase().startsWith('el')) ? 'el' : 'en'
-}
-
-export function setLanguage(lang: Language) {
+/** Remembered for the next visit (see the redirect in layouts/base.astro). */
+export function saveLanguage(lang: Language) {
   try {
     localStorage.setItem(STORAGE_KEY, lang)
   } catch {
     // ignore
   }
-  return i18n.changeLanguage(lang)
-}
-
-let detected = false
-/** Call from an island's effect (after hydration). Only the first call does anything. */
-export function applyDetectedLanguage() {
-  if (detected) return
-  detected = true
-  i18n.changeLanguage(detect())
 }
 
 if (typeof document !== 'undefined') {
-  const syncHtmlLang = () => {
-    document.documentElement.lang = i18n.resolvedLanguage ?? 'en'
-    // Pages are pre-rendered with English titles; translate the tab title (see layouts/base.astro).
-    const key = document.querySelector('meta[name="bt:title"]')?.getAttribute('content')
-    if (key) document.title = key === 'meta.home' ? i18n.t(key) : `${i18n.t(key)} · BuildThis`
-  }
-  i18n.on('languageChanged', syncHtmlLang)
-  // <ClientRouter /> swaps <html> attributes on navigation; put ours back.
-  document.addEventListener('astro:after-swap', syncHtmlLang)
+  // <ClientRouter /> navigations can cross languages (the switcher, or the 404 page).
+  document.addEventListener('astro:after-swap', () => i18n.changeLanguage(langFromPath(location.pathname)))
+  // The 404 page is shared by both languages and pre-rendered in English.
+  i18n.on('languageChanged', (lng) => (document.documentElement.lang = lng))
 }
 
 export function currentLanguage(): Language {

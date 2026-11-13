@@ -25,7 +25,7 @@ import { hostOf, timeAgo } from '@/lib/format'
 import { useMyIssues, useMySolutions, useVotedIssues } from '@/lib/hooks'
 import { type Profile, stacks } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { PublicToggle, RolePicker } from '@/views/onboarding'
+import { EmailsToggle, PublicToggle, RolePicker } from '@/views/onboarding'
 
 type Tab = 'issues' | 'solutions' | 'votes'
 
@@ -42,6 +42,7 @@ function ProfileForm({ profile }: { profile: Profile }) {
   const [link, setLink] = useState(profile.link)
   // Non-builders were never listed; if they switch to builder, start them as public.
   const [isPublic, setPublic] = useState(profile.role === 'user' || (profile.public ?? false))
+  const [emails, setEmails] = useState(profile.emails ?? true)
   const [saving, setSaving] = useState(false)
   const builder = role !== 'user'
   const linkOk = !link.trim() || /^https:\/\/\S+\.\S+$/.test(link.trim())
@@ -61,6 +62,7 @@ function ProfileForm({ profile }: { profile: Profile }) {
         link: builder ? link.trim() : '',
         lang: currentLanguage(),
         public: builder && isPublic,
+        emails,
       })
       toast.success(t('me.saved'))
     } catch (err) {
@@ -122,6 +124,7 @@ function ProfileForm({ profile }: { profile: Profile }) {
           <PublicToggle value={isPublic} onChange={setPublic} />
         </>
       )}
+      <EmailsToggle value={emails} onChange={setEmails} />
       <Button type="submit" size="lg" loading={saving}>
         {t('me.save')}
       </Button>

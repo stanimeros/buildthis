@@ -35,6 +35,8 @@ export interface ProfileInput {
   lang: 'en' | 'el'
   /** show on the landing page (builders only) */
   public: boolean
+  /** email notifications; left out at signup (on by default) */
+  emails?: boolean
 }
 
 const DELETED = 'Deleted user'

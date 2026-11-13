@@ -1,10 +1,11 @@
 ---
+export { getStaticPaths } from '@/i18n'
 import Loading from '@/components/loading.astro'
 import Base from '@/layouts/base.astro'
 import OnboardingIsland from '@/islands/onboarding'
 ---
 
-<Base title="Welcome" titleKey="meta.welcome" noindex>
+<Base titleKey="meta.welcome" noindex>
   <OnboardingIsland client:only="react">
     <Loading slot="fallback" />
   </OnboardingIsland>

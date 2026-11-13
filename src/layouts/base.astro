@@ -5,30 +5,31 @@ import '@/index.css'
 
 import { ClientRouter } from 'astro:transitions'
 
+import i18n, { langFromPath, localizePath } from '@/i18n'
 import FooterIsland from '@/islands/footer'
 import HeaderIsland from '@/islands/header'
 
 interface Props {
-  title?: string
-  description?: string
+  /** i18n key for the tab title (src/i18n/locales) */
+  titleKey: string
+  /** i18n key for the meta description */
+  descriptionKey?: string
   /** Pages served for many URLs (rewrites) or private pages. */
   noindex?: boolean
-  /** i18n key for the tab title once the visitor's language is known (src/i18n/index.ts) */
-  titleKey?: string
 }
 
-const {
-  title,
-  description = 'Post the problems you want an app for, upvote the ones you share, and let builders compete to solve them.',
-  noindex = false,
-  titleKey,
-} = Astro.props
-const fullTitle = title ? `${title} · BuildThis` : 'BuildThis: build what people ask for'
-const canonical = new URL(Astro.url.pathname.replace(/\.html$/, '').replace(/\/index$/, '/'), Astro.site)
+const { titleKey, descriptionKey = 'meta.description', noindex = false } = Astro.props
+const path = Astro.url.pathname.replace(/\.html$/, '').replace(/\/index$/, '/')
+const lang = langFromPath(path)
+const t = i18n.getFixedT(lang)
+const fullTitle = titleKey === 'meta.home' ? t(titleKey) : `${t(titleKey)} · BuildThis`
+const description = t(descriptionKey)
+const url = (l: 'en' | 'el') => new URL(localizePath(path, l), Astro.site).href
+const canonical = url(lang)
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang={lang}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -36,12 +37,40 @@ const canonical = new URL(Astro.url.pathname.replace(/\.html$/, '').replace(/\/i
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
     <link rel="preconnect" href="https://www.gstatic.com" />
+    <!-- Back to the language this visitor picked before, or Greek for a Greek browser on a first
+         visit. Crawlers have neither, so they index both versions as they are. -->
+    <script is:inline>
+      ;(() => {
+        const path = location.pathname
+        const here = /^\/el(?=\/|$)/.test(path) ? 'el' : 'en'
+        let want = null
+        try {
+          want = localStorage.getItem('lang')
+        } catch {}
+        if (want !== 'en' && want !== 'el') want = navigator.languages?.some((l) => /^el\b/i.test(l)) ? 'el' : null
+        if (!want || want === here) return
+        const bare = path.replace(/^\/el(?=\/|$)/, '') || '/'
+        const to = want === 'en' ? bare : bare === '/' ? '/el' : `/el${bare}`
+        location.replace(to + location.search + location.hash)
+      })()
+    </script>
     <title>{fullTitle}</title>
-    {titleKey && <meta name="bt:title" content={titleKey} />}
     <meta name="description" content={description} />
-    {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
+    {
+      noindex ? (
+        <meta name="robots" content="noindex" />
+      ) : (
+        <>
+          <link rel="canonical" href={canonical} />
+          <link rel="alternate" hreflang="en" href={url('en')} />
+          <link rel="alternate" hreflang="el" href={url('el')} />
+          <link rel="alternate" hreflang="x-default" href={url('en')} />
+        </>
+      )
+    }
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="BuildThis" />
+    <meta property="og:locale" content={lang === 'el' ? 'el_GR' : 'en_US'} />
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
     {!noindex && <meta property="og:url" content={canonical} />}
@@ -67,10 +96,10 @@ const canonical = new URL(Astro.url.pathname.replace(/\.html$/, '').replace(/\/i
     </script>
   </head>
   <body class="flex min-h-svh flex-col overflow-x-clip bg-background text-foreground">
-    <HeaderIsland client:load transition:persist="header" />
+    <HeaderIsland client:load transition:persist="header" lang={lang} />
     <main class="flex-1">
       <slot />
     </main>
-    <FooterIsland client:load transition:persist="footer" />
+    <FooterIsland client:load transition:persist="footer" lang={lang} />
   </body>
 </html>

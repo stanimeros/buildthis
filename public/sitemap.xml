@@ -1,5 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://buildthis.stanimeros.com/</loc></url>
-  <url><loc>https://buildthis.stanimeros.com/new</loc></url>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://buildthis.stanimeros.com/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://buildthis.stanimeros.com/" />
+    <xhtml:link rel="alternate" hreflang="el" href="https://buildthis.stanimeros.com/el" />
+  </url>
+  <url>
+    <loc>https://buildthis.stanimeros.com/el</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://buildthis.stanimeros.com/" />
+    <xhtml:link rel="alternate" hreflang="el" href="https://buildthis.stanimeros.com/el" />
+  </url>
+  <url>
+    <loc>https://buildthis.stanimeros.com/new</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://buildthis.stanimeros.com/new" />
+    <xhtml:link rel="alternate" hreflang="el" href="https://buildthis.stanimeros.com/el/new" />
+  </url>
+  <url>
+    <loc>https://buildthis.stanimeros.com/el/new</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://buildthis.stanimeros.com/new" />
+    <xhtml:link rel="alternate" hreflang="el" href="https://buildthis.stanimeros.com/el/new" />
+  </url>
 </urlset>

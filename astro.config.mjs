@@ -3,12 +3,12 @@ import react from '@astrojs/react'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'astro/config'
 
-// Dynamic issue URLs are served by a few static pages. Firebase Hosting does this with the
-// `rewrites` in firebase.json; this mirrors them for `astro dev`.
+// Dynamic issue URLs are served by a few static pages per language. Firebase Hosting does this
+// with the `rewrites` in firebase.json; this mirrors them for `astro dev`.
 const rewrites = [
-  [/^\/p\/[^/]+\/edit$/, '/problem-edit'],
-  [/^\/p\/[^/]+\/submit$/, '/problem-submit'],
-  [/^\/p\/[^/]+$/, '/problem'],
+  [/^(\/el)?\/p\/[^/]+\/edit$/, '$1/problem-edit'],
+  [/^(\/el)?\/p\/[^/]+\/submit$/, '$1/problem-submit'],
+  [/^(\/el)?\/p\/[^/]+$/, '$1/problem'],
 ]
 
 /** @returns {import('vite').Plugin} */
@@ -19,7 +19,7 @@ function devRewrites() {
       server.middlewares.use((req, _res, next) => {
         const [path, qs] = (req.url ?? '').split('?')
         const hit = rewrites.find(([re]) => /** @type {RegExp} */ (re).test(path))
-        if (hit) req.url = hit[1] + (qs ? `?${qs}` : '')
+        if (hit) req.url = path.replace(hit[0], /** @type {string} */ (hit[1])) + (qs ? `?${qs}` : '')
         next()
       })
     },

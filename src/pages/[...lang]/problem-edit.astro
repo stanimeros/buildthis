@@ -1,10 +1,11 @@
 ---
+export { getStaticPaths } from '@/i18n'
 import Loading from '@/components/loading.astro'
 import Base from '@/layouts/base.astro'
 import IssueFormIsland from '@/islands/issue-form'
 ---
 
-<Base title="Post a problem" titleKey="meta.post" description="Describe the app you wish existed. Builders are watching.">
+<Base titleKey="meta.edit" noindex>
   <IssueFormIsland client:only="react">
     <Loading slot="fallback" />
   </IssueFormIsland>

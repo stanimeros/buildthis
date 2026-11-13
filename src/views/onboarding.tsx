@@ -77,6 +77,22 @@ export function PublicToggle({ value, onChange }: { value: boolean; onChange: (v
   )
 }
 
+/** Emails about the user's own problems (a builder started, a solution arrived). */
+export function EmailsToggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  const { t } = useTranslation()
+  return (
+    <div id="emails" className="flex scroll-mt-24 items-start justify-between gap-4 rounded-2xl border bg-card p-4">
+      <div className="space-y-1">
+        <Label htmlFor="emails-switch" className="font-bold">
+          {t('me.emails')}
+        </Label>
+        <p className="text-sm text-muted-foreground">{t('me.emailsBody')}</p>
+      </div>
+      <Switch id="emails-switch" checked={value} onCheckedChange={onChange} className="mt-1" />
+    </div>
+  )
+}
+
 /** The two onboarding steps. Saving creates the profile; the auth store then has a profile. */
 export function OnboardingForm() {
   const { t } = useTranslation()

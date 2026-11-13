@@ -5,7 +5,7 @@ import { lazy, type ReactNode, Suspense, useEffect, useState } from 'react'
 import { I18nextProvider } from 'react-i18next'
 
 import { Spinner } from '@/components/spinner'
-import i18n, { applyDetectedLanguage } from '@/i18n'
+import i18n, { type Language } from '@/i18n'
 
 // Lazy so islands without `auth` (footer, home) don't wait for Firebase to hydrate.
 const RequireAuth = lazy(() => import('@/components/require-auth').then((m) => ({ default: m.RequireAuth })))
@@ -15,17 +15,16 @@ const motionFeatures = () => import('@/lib/motion-features').then((m) => m.defau
 /**
  * Shared wrapper for every React island.
  *
- * Each island gets its own i18n instance. Pre-rendered (`ssr`) islands start in English so
- * hydration matches the static HTML, then follow the global language right after mounting.
+ * Each island gets its own i18n instance. Pre-rendered islands get the page's `lang`, so hydration
+ * matches the static HTML; all of them follow the global language (the URL's) after mounting.
  */
-export function Island({ children, auth, ssr }: { children: ReactNode; auth?: boolean; ssr?: boolean }) {
-  const [instance] = useState(() => i18n.cloneInstance({ lng: ssr ? 'en' : i18n.language }))
+export function Island({ children, auth, lang }: { children: ReactNode; auth?: boolean; lang?: Language }) {
+  const [instance] = useState(() => i18n.cloneInstance({ lng: lang ?? i18n.language }))
 
   useEffect(() => {
     const follow = (lng: string) => {
       if (instance.language !== lng) instance.changeLanguage(lng)
     }
-    applyDetectedLanguage()
     follow(i18n.language)
     i18n.on('languageChanged', follow)
     return () => i18n.off('languageChanged', follow)

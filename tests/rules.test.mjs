@@ -87,6 +87,11 @@ describe('users', () => {
     await seedUser('a', { issuesDay: today(), issuesToday: 5 })
     await assertFails(updateDoc(doc(db('a'), 'users', 'a'), { issuesToday: 0 }))
   })
+  test('email notifications can be turned off, only with a boolean', async () => {
+    await seedUser('a')
+    await assertSucceeds(updateDoc(doc(db('a'), 'users', 'a'), { emails: false }))
+    await assertFails(updateDoc(doc(db('a'), 'users', 'a'), { emails: 'no' }))
+  })
   test('can edit profile', async () => {
     await seedUser('a')
     await assertSucceeds(updateDoc(doc(db('a'), 'users', 'a'), { name: 'Bob', stack: ['ios'] }))

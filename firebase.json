@@ -9,6 +9,18 @@
     ],
     "rewrites": [
       {
+        "source": "/el/p/*/edit",
+        "destination": "/el/problem-edit.html"
+      },
+      {
+        "source": "/el/p/*/submit",
+        "destination": "/el/problem-submit.html"
+      },
+      {
+        "source": "/el/p/*",
+        "destination": "/el/problem.html"
+      },
+      {
         "source": "/p/*/edit",
         "destination": "/problem-edit.html"
       },
@@ -76,6 +88,23 @@
       }
     ]
   },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
+    }
+  ],
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
@@ -90,6 +119,9 @@
     "ui": {
       "enabled": false
     },
-    "singleProjectMode": true
+    "singleProjectMode": true,
+    "functions": {
+      "port": 5001
+    }
   }
 }

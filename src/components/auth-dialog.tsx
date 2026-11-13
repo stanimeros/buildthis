@@ -13,6 +13,7 @@ import {
   checkVerified, justSignedOut, resendVerification, resetPassword, signInWithEmail, signInWithGoogle,
   signOut, signUpWithEmail, useAuth,
 } from '@/lib/auth'
+import { langFromPath, localizePath } from '@/i18n'
 import { closeAuthDialog, finishAuthDialog, openAuthDialog, useAuthDialogOpen } from '@/lib/auth-dialog'
 import { Link, navigate } from '@/lib/nav'
 
@@ -275,7 +276,7 @@ export function AuthDialog() {
   useEffect(() => {
     if (!open || !user || !profile) return
     const then = finishAuthDialog()
-    if (then && then !== location.pathname) navigate(then)
+    if (then && localizePath(then, langFromPath(location.pathname)) !== location.pathname) navigate(then)
   }, [open, user, profile])
 
   return (

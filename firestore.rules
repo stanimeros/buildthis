@@ -215,7 +215,7 @@ service cloud.firestore {
       return d.keys().hasOnly(['name', 'photo', 'role', 'country', 'stack', 'link', 'lang', 'source',
                                'lastIssueAt', 'lastSolutionAt', 'onboardedAt', 'createdAt',
                                'issuesDay', 'issuesToday', 'solutionsDay', 'solutionsToday',
-                               'lastIssueId', 'lastSolutionId', 'public'])
+                               'lastIssueId', 'lastSolutionId', 'public', 'emails'])
         && str(d.name, 1, 60)
         && !reservedName(d.name)
         && validPhoto(d.photo)
@@ -227,6 +227,8 @@ service cloud.firestore {
         && str(d.source, 0, 200)
         // Only builders can be listed on the landing page.
         && d.get('public', false) is bool
+        // Email notifications (functions/src/notify.ts); on unless turned off.
+        && d.get('emails', true) is bool
         && (d.get('public', false) == false || d.role in ['builder', 'both'])
         && d.onboardedAt is timestamp;
     }

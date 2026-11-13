@@ -248,7 +248,9 @@
     "photo": "Photo",
     "photoHint": "Shown next to your name on your problems and solutions.",
     "photoRemove": "Remove photo",
-    "photoGoogle": "Use my Google photo"
+    "photoGoogle": "Use my Google photo",
+    "emails": "Email me about my problems",
+    "emailsBody": "When a builder starts working on one of your problems, and when a solution is posted."
   },
   "common": {
     "loading": "Loading…",
@@ -296,6 +298,8 @@
     "submit": "Submit a solution",
     "welcome": "Welcome",
     "post": "Post a problem",
-    "edit": "Edit problem"
+    "edit": "Edit problem",
+    "description": "Post the problems you want an app for, upvote the ones you share, and let builders compete to solve them.",
+    "postDescription": "Describe the problem you want solved. Builders are watching."
   }
 }

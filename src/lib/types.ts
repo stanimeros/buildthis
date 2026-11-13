@@ -23,6 +23,8 @@ export interface Profile {
   source: string
   /** builder opted in to show their avatar on the landing page (mirrored to `community/{uid}`) */
   public?: boolean
+  /** email notifications about their problems (functions/); undefined means on */
+  emails?: boolean
   lastIssueAt?: Timestamp
   lastSolutionAt?: Timestamp
   /** daily quotas (see src/lib/quota.ts) */
