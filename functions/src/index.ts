@@ -6,4 +6,10 @@ initializeApp();
 // Firestore is in eur3, so the triggers run next to it.
 setGlobalOptions({ region: "europe-west1", maxInstances: 10 });
 
-export { onBuilderJoined, onSolutionPosted } from "./notify";
+export {
+  onBuilderJoined,
+  onProblemVotes,
+  onSignup,
+  onSolutionPosted,
+  onSolutionVotes,
+} from "./notify";

@@ -26,8 +26,21 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
+/** An image the HTML shows with `<img src="cid:…">`. */
+export type InlineImage = {
+  cid: string;
+  type: string;
+  /** Base64, without a `data:` prefix. */
+  content: string;
+};
+
 /** Throws on any failure; the trigger logs it and moves on. */
-export async function sendEmail(params: { to: string; subject: string; html: string }): Promise<void> {
+export async function sendEmail(params: {
+  to: string;
+  subject: string;
+  html: string;
+  inlineImages?: InlineImage[];
+}): Promise<void> {
   const token = ZEPTOMAIL_TOKEN.value().trim();
   if (!token) throw new Error("ZEPTOMAIL_TOKEN is not configured");
   // The dashboard shows the token with its "Zoho-enczapikey " prefix; take it either way.
@@ -45,7 +58,20 @@ export async function sendEmail(params: { to: string; subject: string; html: str
       to: [{ email_address: { address: params.to } }],
       subject: params.subject,
       htmlbody: params.html,
-      textbody: params.html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+      textbody: params.html
+        .replace(/<[^>]+>/g, " ")
+        .replace(/&rarr;/g, "→")
+        .replace(/\s+/g, " ")
+        .trim(),
+      ...(params.inlineImages?.length
+        ? {
+            inline_images: params.inlineImages.map((i) => ({
+              cid: i.cid,
+              mime_type: i.type,
+              content: i.content,
+            })),
+          }
+        : {}),
     }),
   });
 

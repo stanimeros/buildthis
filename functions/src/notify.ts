@@ -1,17 +1,33 @@
 import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import * as logger from "firebase-functions/logger";
-import { onDocumentCreated } from "firebase-functions/v2/firestore";
-import { builderEmail, type Lang, siteUrl, solutionEmail } from "./emails";
+import { onDocumentCreated, onDocumentUpdated } from "firebase-functions/v2/firestore";
+import {
+  builderEmail,
+  type Lang,
+  problemVotesEmail,
+  siteUrl,
+  solutionEmail,
+  solutionVotesEmail,
+  welcomeEmail,
+} from "./emails";
 import { sendEmail, ZEPTOMAIL_TOKEN } from "./lib/zeptomail";
 
 /** What account deletion leaves in the profile (src/lib/data.ts deleteAccount). */
 const DELETED = "Deleted user";
 
+/** Upvote counts that get an email to the author, once each. */
+const MILESTONES = [5, 10, 25, 50, 100];
+
+/** The highest milestone this change crossed going up, if any. */
+function milestone(before: number, after: number) {
+  return MILESTONES.filter((m) => before < m && after >= m).pop();
+}
+
 /** gRPC ALREADY_EXISTS, from `create()` on a doc that's there. */
 const ALREADY_EXISTS = 6;
 
-/** A problem's author, if they still want emails and have a verified address. */
+/** A user (usually a problem's author), if they still want emails and have a verified address. */
 async function recipient(uid: string): Promise<{ email: string; lang: Lang } | null> {
   const profile = (await getFirestore().doc(`users/${uid}`).get()).data();
   if (!profile || profile.name === DELETED || profile.emails === false) return null;
@@ -85,5 +101,71 @@ export const onSolutionPosted = onDocumentCreated(
       }),
     });
     logger.info("email_solution_posted", { solutionId: event.params.solutionId });
+  },
+);
+
+/** A new profile (end of onboarding) → welcome email. */
+export const onSignup = onDocumentCreated(
+  { document: "users/{uid}", secrets: [ZEPTOMAIL_TOKEN] },
+  async (event) => {
+    const { uid } = event.params;
+    const profile = event.data?.data();
+    const to = await recipient(uid);
+    if (!profile || !to || !(await firstTime(`welcome_${uid}`))) return;
+
+    await sendEmail({ to: to.email, ...welcomeEmail(to.lang, { builder: profile.role !== "user" }) });
+    logger.info("email_welcome", { uid });
+  },
+);
+
+/** A problem's upvotes cross a milestone → email its author. */
+export const onProblemVotes = onDocumentUpdated(
+  { document: "issues/{issueId}", secrets: [ZEPTOMAIL_TOKEN] },
+  async (event) => {
+    const before = event.data?.before.data();
+    const issue = event.data?.after.data();
+    if (!before || !issue || issue.hidden) return;
+    const votes = milestone(before.votes ?? 0, issue.votes ?? 0);
+    if (!votes) return;
+    const { issueId } = event.params;
+    const to = await recipient(issue.authorId);
+    if (!to || !(await firstTime(`votes_${issueId}_${votes}`))) return;
+
+    await sendEmail({
+      to: to.email,
+      ...problemVotesEmail(to.lang, {
+        problem: issue.title,
+        votes,
+        url: siteUrl(`/p/${encodeURIComponent(issueId)}`, to.lang),
+      }),
+    });
+    logger.info("email_problem_votes", { issueId, votes });
+  },
+);
+
+/** A solution's upvotes cross a milestone → email the builder. */
+export const onSolutionVotes = onDocumentUpdated(
+  { document: "solutions/{solutionId}", secrets: [ZEPTOMAIL_TOKEN] },
+  async (event) => {
+    const before = event.data?.before.data();
+    const solution = event.data?.after.data();
+    if (!before || !solution || solution.hidden) return;
+    const votes = milestone(before.votes ?? 0, solution.votes ?? 0);
+    if (!votes) return;
+    const { solutionId } = event.params;
+    const issue = (await getFirestore().doc(`issues/${solution.issueId}`).get()).data();
+    const to = await recipient(solution.authorId);
+    if (!issue || issue.hidden || !to || !(await firstTime(`votes_${solutionId}_${votes}`))) return;
+
+    await sendEmail({
+      to: to.email,
+      ...solutionVotesEmail(to.lang, {
+        problem: issue.title,
+        solution: solution.title,
+        votes,
+        url: siteUrl(`/p/${encodeURIComponent(solution.issueId)}`, to.lang),
+      }),
+    });
+    logger.info("email_solution_votes", { solutionId, votes });
   },
 );

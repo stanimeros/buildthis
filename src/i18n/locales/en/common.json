@@ -249,8 +249,8 @@
     "photoHint": "Shown next to your name on your problems and solutions.",
     "photoRemove": "Remove photo",
     "photoGoogle": "Use my Google photo",
-    "emails": "Email me about my problems",
-    "emailsBody": "When a builder starts working on one of your problems, and when a solution is posted."
+    "emails": "Email me about my problems and solutions",
+    "emailsBody": "When a builder starts on one of your problems, when a solution is posted, and when your problems or solutions reach new upvote milestones."
   },
   "common": {
     "loading": "Loading…",

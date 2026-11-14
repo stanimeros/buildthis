@@ -77,7 +77,7 @@ export function PublicToggle({ value, onChange }: { value: boolean; onChange: (v
   )
 }
 
-/** Emails about the user's own problems (a builder started, a solution arrived). */
+/** Emails about the user's own problems and solutions (see functions/src/notify.ts). */
 export function EmailsToggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
   const { t } = useTranslation()
   return (
