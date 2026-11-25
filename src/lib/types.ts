@@ -27,6 +27,7 @@ export interface Profile {
   emails?: boolean
   lastIssueAt?: Timestamp
   lastSolutionAt?: Timestamp
+  lastCommentAt?: Timestamp
   /** daily quotas (see src/lib/quota.ts) */
   issuesDay?: number
   issuesToday?: number
@@ -84,10 +85,22 @@ export interface Solution {
   createdAt: Timestamp | null
 }
 
+/** Public feedback on a solution: `solutions/{solutionId}/comments/{id}`. */
+export interface Comment {
+  id: string
+  solutionId: string
+  text: string
+  authorId: string
+  authorName: string
+  authorPhoto: string
+  createdAt: Timestamp | null
+}
+
 export const limits = {
   issueTitle: [8, 120],
   issueBody: [0, 2000],
   solutionTitle: [2, 80],
   solutionBody: [0, 1000],
   name: [1, 60],
+  comment: [1, 500],
 } as const

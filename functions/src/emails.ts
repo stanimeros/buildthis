@@ -252,3 +252,31 @@ export function solutionVotesEmail(
         }),
       };
 }
+
+/** Someone left feedback on a solution → the builder. */
+export function feedbackEmail(
+  lang: Lang,
+  d: { solution: string; author: string; text: string; url: string },
+) {
+  const author = escapeHtml(d.author);
+  const text = escapeHtml(d.text.length > 300 ? `${d.text.slice(0, 300)}…` : d.text);
+  return lang === "el"
+    ? {
+        subject: `Νέο σχόλιο για τη λύση σου «${d.solution}»`,
+        ...layout(lang, "solution", {
+          title: "Κάποιος σχολίασε τη λύση σου",
+          card: d.solution,
+          paragraphs: [`<strong>${author}</strong> έγραψε:`, `«${text}»`],
+          cta: { label: "Απάντησε", url: d.url },
+        }),
+      }
+    : {
+        subject: `New feedback on your solution “${d.solution}”`,
+        ...layout(lang, "solution", {
+          title: "Someone left feedback on your solution",
+          card: d.solution,
+          paragraphs: [`<strong>${author}</strong> wrote:`, `“${text}”`],
+          cta: { label: "Reply", url: d.url },
+        }),
+      };
+}

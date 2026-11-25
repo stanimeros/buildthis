@@ -215,7 +215,8 @@ service cloud.firestore {
       return d.keys().hasOnly(['name', 'photo', 'role', 'country', 'stack', 'link', 'lang', 'source',
                                'lastIssueAt', 'lastSolutionAt', 'onboardedAt', 'createdAt',
                                'issuesDay', 'issuesToday', 'solutionsDay', 'solutionsToday',
-                               'lastIssueId', 'lastSolutionId', 'public', 'emails'])
+                               'lastIssueId', 'lastSolutionId', 'lastCommentAt', 'lastCommentId',
+                               'public', 'emails'])
         && str(d.name, 1, 60)
         && !reservedName(d.name)
         && validPhoto(d.photo)
@@ -300,7 +301,7 @@ service cloud.firestore {
         && !('lastIssueAt' in request.resource.data)
         && !('lastSolutionAt' in request.resource.data)
         && !request.resource.data.keys().hasAny(['issuesDay', 'issuesToday', 'solutionsDay', 'solutionsToday',
-                                                 'lastIssueId', 'lastSolutionId']);
+                                                 'lastIssueId', 'lastSolutionId', 'lastCommentAt', 'lastCommentId']);
       allow update: if isMe(uid)
         && validProfile(request.resource.data)
         && optOutRemovesCommunity(uid)
@@ -310,9 +311,11 @@ service cloud.firestore {
         && (!changed().hasAny(['source']) || request.resource.data.source == '')
         && str(request.resource.data.get('lastIssueId', ''), 0, 40)
         && str(request.resource.data.get('lastSolutionId', ''), 0, 200)
+        && str(request.resource.data.get('lastCommentId', ''), 0, 40)
         // Cooldown stamps can only ever move to "now", never be backdated.
         && (!changed().hasAny(['lastIssueAt']) || request.resource.data.lastIssueAt == request.time)
         && (!changed().hasAny(['lastSolutionAt']) || request.resource.data.lastSolutionAt == request.time)
+        && (!changed().hasAny(['lastCommentAt']) || request.resource.data.lastCommentAt == request.time)
         // Max 5 problems and 3 solutions per UTC day.
         && (!changed().hasAny(['issuesDay', 'issuesToday']) || validDaily('issuesDay', 'issuesToday', 5))
         && (!changed().hasAny(['solutionsDay', 'solutionsToday']) || validDaily('solutionsDay', 'solutionsToday', 3));
@@ -492,11 +495,8 @@ service cloud.firestore {
            == get(/databases/$(database)/documents/issues/$(request.resource.data.issueId)).data.solutions + 1
         && cooledDown('lastSolutionAt', 2)
         && countedToday('solutionsDay', 'solutionsToday')
-        && isBuilderAfter()
-        // Claim first ("I'm building this"), then wait an hour: stops scripted drive-by submissions.
-        && exists(/databases/$(database)/documents/issues/$(request.resource.data.issueId)/builders/$(request.auth.uid))
-        && get(/databases/$(database)/documents/issues/$(request.resource.data.issueId)/builders/$(request.auth.uid)).data.createdAt
-           < request.time - duration.value(60, 'm');
+        // No claim needed: "I'm building this" is only a signal. Cooldown + daily cap limit spam.
+        && isBuilderAfter();
 
       allow update: if
         (isMe(resource.data.authorId) && inGoodStanding()
@@ -531,6 +531,33 @@ service cloud.firestore {
         allow create, update: if docId == 'moderation' && validModerationWrite('solutions', solutionId);
       }
 
+      // Public feedback on a solution. One per batch and one a minute (lastCommentAt / lastCommentId).
+      match /comments/{commentId} {
+        allow get: if true;
+        allow list: if smallPage();
+        allow create: if onboarded() && inGoodStanding()
+          && commentId.matches('^[A-Za-z0-9]{20}$')
+          && exists(/databases/$(database)/documents/solutions/$(solutionId))
+          && request.resource.data.keys().hasOnly(['solutionId', 'text', 'authorId', 'authorName', 'authorPhoto', 'createdAt'])
+          && request.resource.data.solutionId == solutionId
+          && str(request.resource.data.text, 1, 500)
+          && request.resource.data.authorId == request.auth.uid
+          && str(request.resource.data.authorName, 1, 60)
+          && validPhoto(request.resource.data.authorPhoto)
+          && authorMatchesProfile(request.resource.data)
+          && request.resource.data.createdAt == request.time
+          && cooledDown('lastCommentAt', 1)
+          && getAfter(userPath(request.auth.uid)).data.get('lastCommentId', '') == commentId;
+        // Renames and account deletion relabel it, like problems and solutions.
+        allow update: if isMe(resource.data.authorId)
+          && changed().hasOnly(['authorName', 'authorPhoto'])
+          && authorMatchesProfile(request.resource.data);
+        // Its author, the solution's builder (moderating their own page) or an admin.
+        allow delete: if isMe(resource.data.authorId) || isAdmin()
+          || (signedIn() && exists(/databases/$(database)/documents/solutions/$(solutionId))
+              && get(/databases/$(database)/documents/solutions/$(solutionId)).data.authorId == request.auth.uid);
+      }
+
       match /votes/{uid} {
         allow read: if isMe(uid);
         allow create: if isMe(uid) && inGoodStanding()
@@ -549,6 +576,10 @@ service cloud.firestore {
     // "My votes" on /me and own claims (account deletion): collection-group queries, own docs only.
     match /{path=**}/votes/{uid} {
       allow read: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+    // Own feedback (relabel on rename / account deletion): collection-group query.
+    match /{path=**}/comments/{commentId} {
+      allow list: if smallPage() && signedIn() && resource.data.authorId == request.auth.uid;
     }
     match /{path=**}/builders/{uid} {
       allow read: if signedIn() && resource.data.uid == request.auth.uid;

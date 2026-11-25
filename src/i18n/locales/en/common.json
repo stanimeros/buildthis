@@ -108,7 +108,7 @@
     "by": "by {{name}}",
     "building": "I'm building this",
     "buildingActive": "You're building this",
-    "buildingHint": "Claim it, then submit your solution after an hour. You can unclaim anytime.",
+    "buildingHint": "Let others know you're on it. You can submit your solution anytime.",
     "solutionsTitle": "Solutions",
     "noSolutions": "No solutions yet. Could be yours.",
     "noSolutionsBody": "Builders who take this on will show up here.",
@@ -142,7 +142,9 @@
     "titleLength": "Title must be 8–120 characters.",
     "dailyLimit": "You've posted 5 problems today. Come back tomorrow.",
     "cooldown_one": "You just posted a problem. You can post again in {{count}} minute.",
-    "cooldown_other": "You just posted a problem. You can post again in {{count}} minutes."
+    "cooldown_other": "You just posted a problem. You can post again in {{count}} minutes.",
+    "built": "I already built a solution",
+    "builtBody": "Post your solution together with the problem it solves."
   },
   "solution": {
     "title": "Submit your solution",
@@ -164,13 +166,18 @@
     "invalidUrl": "Enter a valid https:// link.",
     "nameLength": "Name must be 2–80 characters.",
     "dailyLimit": "You've submitted 3 solutions today. Come back tomorrow.",
-    "claimFirst": "Claim it first",
-    "claimFirstBody": "Tap “I'm building this” on the problem. You can submit your solution an hour later. This keeps out bots that spam every problem.",
-    "claimWait": "Almost there",
-    "claimWaitBody": "You claimed this problem recently. You can submit your solution in {{minutes}} min.",
-    "backToProblem": "Back to the problem",
     "cooldown_one": "You just submitted a solution. Try again in {{count}} minute.",
     "cooldown_other": "You just submitted a solution. Try again in {{count}} minutes."
+  },
+  "feedback": {
+    "toggle": "Feedback",
+    "toggleCount_one": "{{count}} comment",
+    "toggleCount_other": "{{count}} comments",
+    "builder": "Builder",
+    "placeholder": "Tried it? Tell the builder what works and what's missing.",
+    "placeholderBuilder": "Reply to the feedback…",
+    "send": "Send",
+    "cooldown": "Wait a minute before sending another comment."
   },
   "signin": {
     "title": "Sign in to BuildThis",
@@ -227,7 +234,10 @@
     "nameReserved": "That name is reserved. Pick another one.",
     "welcome": "Welcome, {{name}}!",
     "public": "Show me on the homepage",
-    "publicBody": "Your photo and name appear with the other builders on BuildThis. You can turn this off anytime."
+    "publicBody": "Your photo and name appear with the other builders on BuildThis. You can turn this off anytime.",
+    "skip": "Skip for now",
+    "skipHint": "You can fill in your profile later from your account.",
+    "defaultName": "Member"
   },
   "me": {
     "title": "My account",

@@ -162,6 +162,9 @@ export async function submitSolution(
   const uid = me().uid
   const id = solutionId(issueId, uid)
   const batch = writeBatch(db)
+  // Solutions are builder-only in the rules: a plain "user" becomes 'both' (same as claiming).
+  const role = profile.role === 'user' ? 'both' : profile.role
+  if (role !== profile.role) bumpStats(batch, profile, { ...profile, role })
   batch.set(doc(db, 'solutions', id), {
     ...input,
     issueId,
@@ -177,6 +180,7 @@ export async function submitSolution(
     lastSolutionAt: serverTimestamp(),
     lastSolutionId: id,
     ...bumpDaily(profile, 'solutions'),
+    ...(role !== profile.role ? { role } : {}),
   })
   await batch.commit()
   track('submit_solution')
@@ -202,6 +206,29 @@ export async function toggleSolutionVote(id: string, voted: boolean) {
   batch.update(doc(db, 'solutions', id), { votes: increment(voted ? -1 : 1) })
   await batch.commit()
   if (!voted) track('vote', { target: 'solution' })
+}
+
+/** Public feedback on a solution. The user doc stamps it (one a minute, see the rules). */
+export async function postComment(profile: Profile, solution: string, text: string) {
+  const uid = me().uid
+  const ref = doc(collection(db, 'solutions', solution, 'comments'))
+  const batch = writeBatch(db)
+  batch.set(ref, {
+    solutionId: solution,
+    text,
+    authorId: uid,
+    authorName: profile.name,
+    authorPhoto: profile.photo,
+    createdAt: serverTimestamp(),
+  })
+  batch.update(doc(db, 'users', uid), { lastCommentAt: serverTimestamp(), lastCommentId: ref.id })
+  await batch.commit()
+  track('comment')
+}
+
+/** By its author, the solution's builder, or an admin. */
+export async function deleteComment(solution: string, id: string) {
+  await deleteDoc(doc(db, 'solutions', solution, 'comments', id))
 }
 
 /** Author (while it has no solutions) or admin. Vote docs stay behind as orphans; ids are never reused. */
@@ -249,7 +276,7 @@ async function eachPage(q: (cursor?: QueryDocumentSnapshot) => Query, fn: (docs:
   }
 }
 
-/** Rewrites the author label on everything this user posted. */
+/** Rewrites the author label on everything this user posted (problems, solutions, feedback). */
 async function relabelContent(uid: string, label: { authorName: string; authorPhoto: string }) {
   for (const path of ['issues', 'solutions']) {
     await eachPage(
@@ -268,6 +295,21 @@ async function relabelContent(uid: string, label: { authorName: string; authorPh
       },
     )
   }
+  await eachPage(
+    (cursor) =>
+      query(
+        collectionGroup(db, 'comments'),
+        where('authorId', '==', uid),
+        orderBy('createdAt', 'desc'),
+        ...(cursor ? [startAfter(cursor)] : []),
+        limit(50),
+      ),
+    async (docs) => {
+      const batch = writeBatch(db)
+      docs.forEach((d) => batch.update(d.ref, label))
+      await batch.commit()
+    },
+  )
 }
 
 /**

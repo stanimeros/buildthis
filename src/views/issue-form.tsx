@@ -13,12 +13,16 @@ import { Page } from '@/components/layout'
 import { Spinner } from '@/components/spinner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/lib/auth'
 import { cooldownLeft, LIMITS, usedToday } from '@/lib/quota'
-import { postIssue, updateIssue } from '@/lib/data'
+import { postIssue, submitSolution, updateIssue } from '@/lib/data'
 import { useIssue } from '@/lib/hooks'
 import { type Category, categories, type IssueInput, limits } from '@/lib/types'
+
+const URL_RE = /^https:\/\/[^\s]+\.[^\s]+$/
 
 /** /new and /p/:id/edit */
 export function IssueFormPage() {
@@ -48,6 +52,11 @@ function IssueForm({
   const [countryError, setCountryError] = useState(false)
   const [sending, setSending] = useState(false)
   const [titleError, setTitleError] = useState(false)
+  // "I already built a solution": posted right after the problem, as the author's own solution.
+  const [built, setBuilt] = useState(false)
+  const [appName, setAppName] = useState('')
+  const [appUrl, setAppUrl] = useState('https://')
+  const [appErrors, setAppErrors] = useState<{ name?: boolean; url?: boolean }>({})
 
   const editing = !!editId
   const forbidden = editing && (!initial || initial.authorId !== user?.uid)
@@ -75,6 +84,24 @@ function IssueForm({
       return
     }
     setCountryError(false)
+    const app = { title: appName.trim(), url: appUrl.trim(), body: '' }
+    if (built && !editing) {
+      const next = {
+        name: app.title.length < limits.solutionTitle[0] || app.title.length > limits.solutionTitle[1],
+        url: !URL_RE.test(app.url) || app.url.length > 300,
+      }
+      setAppErrors(next)
+      if (next.name || next.url) return
+      if (profile && usedToday(profile, 'solutions') >= LIMITS.solutionsPerDay) {
+        toast.error(t('solution.dailyLimit'))
+        return
+      }
+      const appWait = cooldownLeft(profile?.lastSolutionAt, LIMITS.solutionCooldownMin)
+      if (appWait) {
+        toast.error(t('solution.cooldown', { count: appWait }))
+        return
+      }
+    }
     if (!editing && profile && usedToday(profile, 'issues') >= LIMITS.issuesPerDay) {
       toast.error(t('newIssue.dailyLimit'))
       return
@@ -91,6 +118,13 @@ function IssueForm({
         navigate(`/p/${editId}`)
       } else {
         const newId = await postIssue(profile!, clean)
+        if (built) {
+          // The problem is up either way; if this fails they can add it from the problem page.
+          await submitSolution(profile!, newId, app).catch((err) => {
+            console.error(err)
+            toast.error(t('solution.error'))
+          })
+        }
         navigate(`/p/${newId}`)
       }
     } catch (err) {
@@ -160,6 +194,54 @@ function IssueForm({
                 invalid={countryError}
               />
             </Field>
+          )}
+          {!editing && (
+            <div className="space-y-4 rounded-2xl border bg-card p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="built" className="font-bold">
+                    {t('newIssue.built')}
+                  </Label>
+                  <p className="text-sm text-muted-foreground">{t('newIssue.builtBody')}</p>
+                </div>
+                <Switch id="built" checked={built} onCheckedChange={setBuilt} className="mt-1" />
+              </div>
+              {built && (
+                <>
+                  <Field
+                    id="app-name"
+                    label={t('solution.fieldName')}
+                    error={appErrors.name ? t('solution.nameLength') : null}
+                    count={[appName.length, limits.solutionTitle[1]]}
+                  >
+                    <Input
+                      id="app-name"
+                      placeholder={t('solution.namePlaceholder')}
+                      value={appName}
+                      maxLength={limits.solutionTitle[1]}
+                      onChange={(e) => setAppName(e.target.value)}
+                      aria-invalid={appErrors.name}
+                    />
+                  </Field>
+                  <Field
+                    id="app-url"
+                    label={t('solution.fieldUrl')}
+                    hint={t('solution.urlHint')}
+                    error={appErrors.url ? t('solution.invalidUrl') : null}
+                  >
+                    <Input
+                      id="app-url"
+                      type="url"
+                      inputMode="url"
+                      value={appUrl}
+                      maxLength={300}
+                      onChange={(e) => setAppUrl(e.target.value)}
+                      aria-invalid={appErrors.url}
+                    />
+                  </Field>
+                </>
+              )}
+            </div>
           )}
           <m.div whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}>
             <Button type="submit" size="lg" variant="flame" className="group w-full" loading={sending}>

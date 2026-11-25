@@ -93,6 +93,18 @@ export function EmailsToggle({ value, onChange }: { value: boolean; onChange: (v
   )
 }
 
+function SkipButton({ onClick, saving }: { onClick: () => void; saving: boolean }) {
+  const { t } = useTranslation()
+  return (
+    <div className="text-center">
+      <Button type="button" variant="link" className="h-auto p-0 text-muted-foreground" onClick={onClick} disabled={saving}>
+        {t('onboarding.skip')}
+      </Button>
+      <p className="mt-1 text-xs text-muted-foreground">{t('onboarding.skipHint')}</p>
+    </div>
+  )
+}
+
 /** The two onboarding steps. Saving creates the profile; the auth store then has a profile. */
 export function OnboardingForm() {
   const { t } = useTranslation()
@@ -110,29 +122,41 @@ export function OnboardingForm() {
   const nameOk = name.trim().length >= 1 && name.trim().length <= 60 && !isReservedName(name)
   const linkOk = !link.trim() || /^https:\/\/\S+\.\S+$/.test(link.trim())
 
-  async function finish(e: FormEvent) {
-    e.preventDefault()
-    if (!role || !nameOk || !linkOk) return
+  async function save(fields: Omit<Parameters<typeof createProfile>[0], 'lang'>) {
     setSaving(true)
     try {
-      await createProfile(
-        {
-          name: name.trim(),
-          role,
-          country,
-          stack: builder ? stack : [],
-          link: builder ? link.trim() : '',
-          lang: currentLanguage(),
-          public: builder && isPublic,
-        },
-        getSource(),
-      )
-      toast.success(t('onboarding.welcome', { name: name.trim() }))
+      await createProfile({ ...fields, lang: currentLanguage() }, getSource())
+      toast.success(t('onboarding.welcome', { name: fields.name }))
     } catch (err) {
       console.error(err)
       toast.error(t('onboarding.error'))
       setSaving(false)
     }
+  }
+
+  function finish(e: FormEvent) {
+    e.preventDefault()
+    if (!role || !nameOk || !linkOk) return
+    save({
+      name: name.trim(),
+      role,
+      country,
+      stack: builder ? stack : [],
+      link: builder ? link.trim() : '',
+      public: builder && isPublic,
+    })
+  }
+
+  /** Skip: sensible defaults now, everything can be changed later on /me. */
+  function skip() {
+    save({
+      name: nameOk ? name.trim() : t('onboarding.defaultName'),
+      role: role ?? 'user',
+      country,
+      stack: [],
+      link: '',
+      public: false,
+    })
   }
 
   return (
@@ -161,9 +185,10 @@ export function OnboardingForm() {
           {step === 1 ? (
             <div className="space-y-6">
               <RolePicker value={role} onChange={setRole} />
-              <Button size="lg" className="w-full" disabled={!role} onClick={() => setStep(2)}>
+              <Button size="lg" className="w-full" disabled={!role || saving} onClick={() => setStep(2)}>
                 {t('onboarding.next')}
               </Button>
+              <SkipButton onClick={skip} saving={saving} />
             </div>
           ) : (
             <form onSubmit={finish} noValidate className="space-y-6">
@@ -206,6 +231,7 @@ export function OnboardingForm() {
                   {t(saving ? 'onboarding.saving' : 'onboarding.finish')}
                 </Button>
               </div>
+              <SkipButton onClick={skip} saving={saving} />
             </form>
           )}
         </m.div>

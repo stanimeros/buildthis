@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 
 import { useAuth } from '@/lib/auth'
 import { db } from '@/lib/firebase'
-import type { Category, CommunityMember, Issue, Solution } from '@/lib/types'
+import type { Category, Comment, CommunityMember, Issue, Solution } from '@/lib/types'
 
 export type Sort = 'top' | 'new'
 
@@ -166,6 +166,16 @@ export function useSolutions(issueId: string) {
     `solutions:${issueId}`,
     () => [where('issueId', '==', issueId), where('hidden', '==', false), orderBy('votes', 'desc'), limit(50)],
     'solutions',
+    [],
+  )
+}
+
+/** Feedback on one solution, oldest first. */
+export function useComments(solutionId: string) {
+  return useQuery<Comment>(
+    `comments:${solutionId}`,
+    () => [orderBy('createdAt', 'asc'), limit(50)],
+    `solutions/${solutionId}/comments`,
     [],
   )
 }

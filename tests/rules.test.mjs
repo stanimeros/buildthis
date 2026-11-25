@@ -296,13 +296,35 @@ describe('solutions', () => {
     await seedClaim('a')
   })
   test('submit with counter + cooldown', () => assertSucceeds(submit('a')))
-  test('no claim → rejected', async () => {
+  test('no claim needed', async () => {
     await seed((f) => deleteDoc(doc(f, 'issues', 'i1', 'builders', 'a')))
-    await assertFails(submit('a'))
+    await assertSucceeds(submit('a'))
   })
-  test('claim younger than an hour → rejected', async () => {
-    await seedClaim('a', Timestamp.fromMillis(Date.now() - 10 * 60_000))
-    await assertFails(submit('a'))
+  test('plain user becomes a builder in the same batch', async () => {
+    await seedUser('a', { role: 'user' })
+    await seed((f) => setDoc(doc(f, 'stats', 'global'), { users: 1, builders: 0 }))
+    const f = db('a')
+    const b = writeBatch(f)
+    b.set(doc(f, 'stats', 'global'), { builders: increment(1) }, { merge: true })
+    b.set(doc(f, 'solutions', 'i1_a'), {
+      issueId: 'i1', title: 'Splitly', url: 'https://splitly.app', body: '', authorId: 'a',
+      authorName: 'Alice', authorPhoto: '', votes: 0, hidden: false, createdAt: serverTimestamp(),
+    })
+    b.update(doc(f, 'issues', 'i1'), { solutions: increment(1) })
+    b.update(doc(f, 'users', 'a'), {
+      role: 'both', lastSolutionAt: serverTimestamp(), lastSolutionId: 'i1_a', solutionsDay: today(), solutionsToday: 1,
+    })
+    await assertSucceeds(b.commit())
+  })
+  test('own problem, then own solution right away', async () => {
+    await seedUser('b')
+    const f = db('b')
+    const ref = doc(collection(f, 'issues'))
+    const b1 = writeBatch(f)
+    b1.set(ref, issue('b'))
+    b1.update(doc(f, 'users', 'b'), { lastIssueAt: serverTimestamp(), lastIssueId: ref.id, issuesDay: today(), issuesToday: 1 })
+    await assertSucceeds(b1.commit())
+    await assertSucceeds(submit('b', {}, ref.id))
   })
   test('plain user role → rejected', async () => {
     await seedUser('a', { role: 'user' })
@@ -353,6 +375,58 @@ describe('solutions', () => {
     b.delete(doc(f, 'solutions', 'i1_a'))
     b.update(doc(f, 'issues', 'i1'), { solutions: increment(-1) })
     await assertSucceeds(b.commit())
+  })
+})
+
+describe('feedback', () => {
+  beforeEach(async () => {
+    await seedIssue()
+    await seedUser('a')
+    await submit('a')
+    await seedUser('b', { name: 'Bob' })
+  })
+  function comment(uid, extra = {}, stamp = true, name = 'Bob') {
+    const f = db(uid)
+    const b = writeBatch(f)
+    const ref = doc(collection(f, 'solutions', 'i1_a', 'comments'))
+    b.set(ref, {
+      solutionId: 'i1_a', text: 'Nice, but needs CSV export', authorId: uid, authorName: name,
+      authorPhoto: '', createdAt: serverTimestamp(), ...extra,
+    })
+    if (stamp) b.update(doc(f, 'users', uid), { lastCommentAt: serverTimestamp(), lastCommentId: ref.id })
+    return b.commit().then(() => ref)
+  }
+  test('anyone can read, onboarded users can comment', async () => {
+    await assertSucceeds(comment('b'))
+    await assertSucceeds(getDocs(query(collection(db(null), 'solutions', 'i1_a', 'comments'), limit(50))))
+  })
+  test('without the user stamp → rejected', () => assertFails(comment('b', {}, false)))
+  test('not onboarded → rejected', () => assertFails(comment('c', {}, true, 'Carol')))
+  test('one a minute', async () => {
+    await comment('b')
+    await assertFails(comment('b'))
+  })
+  test('wrong author name → rejected', () => assertFails(comment('b', { authorName: 'Alice' })))
+  test('empty or too long → rejected', async () => {
+    await assertFails(comment('b', { text: '' }))
+    await assertFails(comment('b', { text: 'x'.repeat(501) }))
+  })
+  test('author and builder can delete, others cannot', async () => {
+    const ref = await comment('b')
+    await seedUser('c', { name: 'Carol' })
+    await assertFails(deleteDoc(doc(db('c'), ref.path)))
+    await assertSucceeds(deleteDoc(doc(db('a'), ref.path)))
+    const again = await (async () => { await seedUser('b', { name: 'Bob' }); return comment('b') })()
+    await assertSucceeds(deleteDoc(doc(db('b'), again.path)))
+  })
+  test('cannot edit the text', async () => {
+    const ref = await comment('b')
+    await assertFails(updateDoc(doc(db('b'), ref.path), { text: 'changed' }))
+  })
+  test('own comments via collection group, nobody else\'s', async () => {
+    await comment('b')
+    await assertSucceeds(getDocs(query(collectionGroup(db('b'), 'comments'), where('authorId', '==', 'b'), limit(50))))
+    await assertFails(getDocs(query(collectionGroup(db('c'), 'comments'), where('authorId', '==', 'b'), limit(50))))
   })
 })
 

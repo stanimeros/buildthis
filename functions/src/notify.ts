@@ -4,6 +4,7 @@ import * as logger from "firebase-functions/logger";
 import { onDocumentCreated, onDocumentUpdated } from "firebase-functions/v2/firestore";
 import {
   builderEmail,
+  feedbackEmail,
   type Lang,
   problemVotesEmail,
   siteUrl,
@@ -167,5 +168,29 @@ export const onSolutionVotes = onDocumentUpdated(
       }),
     });
     logger.info("email_solution_votes", { solutionId, votes });
+  },
+);
+
+/** Feedback on a solution → email the builder (not for their own replies). */
+export const onFeedback = onDocumentCreated(
+  { document: "solutions/{solutionId}/comments/{commentId}", secrets: [ZEPTOMAIL_TOKEN] },
+  async (event) => {
+    const comment = event.data?.data();
+    const { solutionId, commentId } = event.params;
+    const solution = (await getFirestore().doc(`solutions/${solutionId}`).get()).data();
+    if (!comment || !solution || solution.hidden || solution.authorId === comment.authorId) return;
+    const to = await recipient(solution.authorId);
+    if (!to || !(await firstTime(`comment_${commentId}`))) return;
+
+    await sendEmail({
+      to: to.email,
+      ...feedbackEmail(to.lang, {
+        solution: solution.title,
+        author: comment.authorName,
+        text: comment.text,
+        url: siteUrl(`/p/${encodeURIComponent(solution.issueId)}`, to.lang),
+      }),
+    });
+    logger.info("email_feedback", { solutionId, commentId });
   },
 );

@@ -8,6 +8,7 @@ setGlobalOptions({ region: "europe-west1", maxInstances: 10 });
 
 export {
   onBuilderJoined,
+  onFeedback,
   onProblemVotes,
   onSignup,
   onSolutionPosted,

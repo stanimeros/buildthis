@@ -8,8 +8,7 @@ export const LIMITS = {
   solutionCooldownMin: 2,
   issuesPerDay: 5,
   solutionsPerDay: 3,
-  /** minutes between "I'm building this" and submitting a solution */
-  claimWaitMin: 60,
+  commentCooldownMin: 1,
 } as const
 
 /** UTC day key, e.g. 20261112. Same formula as todayKey() in the rules. */
@@ -33,10 +32,4 @@ export function usedToday(profile: Profile, kind: Daily) {
 /** Field values for the user doc, written in the same batch as the create. */
 export function bumpDaily(profile: Profile, kind: Daily) {
   return { [`${kind}Day`]: dayKey(), [`${kind}Today`]: usedToday(profile, kind) + 1 }
-}
-
-/** Milliseconds until a claim made at `claimedAt` allows submitting (0 = now). */
-export function claimWaitLeft(claimedAt: Timestamp | null | undefined) {
-  if (!claimedAt) return Infinity
-  return Math.max(0, claimedAt.toMillis() + LIMITS.claimWaitMin * 60_000 - Date.now())
 }

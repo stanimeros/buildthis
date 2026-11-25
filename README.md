@@ -46,7 +46,8 @@ Google sign-in works in the emulator: the popup lets you create a fake account.
 - Votes and "I'm building this" claims are one doc per user (`…/votes/{uid}`, `…/builders/{uid}`),
   readable only by that user. Everyone else only sees the counters.
 - Counters move by exactly ±1, in the same batch as the vote/claim/solution doc.
-- One solution per user per problem; builders only; the problem must be claimed at least 1 hour earlier.
+- One solution per user per problem; posting one makes a plain user a builder. No claim needed ("I'm building this" is just a signal).
+- Feedback on solutions (`solutions/{id}/comments`): onboarded users, one a minute; deletable by its author, the builder or an admin.
 - Limits: 10 min between problems, 2 min between solutions, max 5 problems / 3 solutions per UTC day,
   one create per batch. The user doc that holds these is never deletable from the client.
 - Lists are paged (max 50 per request). Sign-in: Google, or email + password with a verified address. Avatars only from Google.

@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 
 import { Avatar } from '@/components/avatar'
 import { EmptyState, LoadError } from '@/components/empty-state'
+import { Feedback } from '@/components/feedback'
 import { ReportButton } from '@/components/report-button'
 import { useConfirm } from '@/components/confirm'
 import { CategoryBadge, PlaceBadge } from '@/components/badges'
@@ -150,6 +151,7 @@ function SolutionItem({ solution, index }: { solution: Solution; index: number }
           )}
           {!mine && <ReportButton coll="solutions" id={solution.id} authorId={solution.authorId} compact />}
         </div>
+        <Feedback solution={solution} />
       </div>
     </m.li>
   )
